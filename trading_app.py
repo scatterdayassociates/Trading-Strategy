@@ -46,6 +46,31 @@ def lorentzian_distance_daily(series):
     distance = np.log1p(squared_diff)
     return pd.Series(distance, index=series.index)
 
+def parse_tickers(ticker_input):
+    """Parse ticker input string into list of tickers"""
+    if not ticker_input:
+        return []
+    
+    # Split by comma, semicolon, or space and clean up
+    tickers = []
+    for separator in [',', ';', ' ']:
+        if separator in ticker_input:
+            tickers = [t.strip().upper() for t in ticker_input.split(separator)]
+            break
+    else:
+        # No separator found, treat as single ticker
+        tickers = [ticker_input.strip().upper()]
+    
+    # Remove empty strings and duplicates while preserving order
+    seen = set()
+    clean_tickers = []
+    for ticker in tickers:
+        if ticker and ticker not in seen:
+            clean_tickers.append(ticker)
+            seen.add(ticker)
+    
+    return clean_tickers
+
 class StockAnalyzer:
     def __init__(self, tickers, start_date, end_date):
         self.tickers = tickers
@@ -293,6 +318,7 @@ class StockAnalyzer:
 
     def analyze_stocks(self):
         self.processed_data = {}
+        failed_tickers = []
 
         for ticker in self.tickers:
             data_with_ohlc = self.get_clean_financial_data(ticker)
@@ -301,7 +327,7 @@ class StockAnalyzer:
                'Close' not in data_with_ohlc.columns or data_with_ohlc['Close'].empty or \
                not isinstance(data_with_ohlc['Close'], pd.Series):
                 st.error(f"Critical failure: Could not process valid 'Close' Series for {ticker}.")
-                self.processed_data[ticker] = pd.DataFrame()
+                failed_tickers.append(ticker)
                 continue
 
             data_with_ohlc['Daily_Return'] = data_with_ohlc['Close'].pct_change()
@@ -310,17 +336,23 @@ class StockAnalyzer:
 
             if data_with_pred is None or data_with_pred.empty:
                 st.error(f"Processing resulted in empty data after prediction calc for {ticker}.")
-                self.processed_data[ticker] = pd.DataFrame()
+                failed_tickers.append(ticker)
                 continue
 
             data_final, _ = self.calculate_daily_scores(data_with_pred, self.scoring_rules)
 
             if data_final is None or data_final.empty:
                 st.error(f"Processing resulted in empty data after score calc for {ticker}.")
-                self.processed_data[ticker] = pd.DataFrame()
+                failed_tickers.append(ticker)
                 continue
 
             self.processed_data[ticker] = data_final
+
+        # Update tickers list to exclude failed ones
+        self.tickers = [t for t in self.tickers if t not in failed_tickers]
+        
+        if failed_tickers:
+            st.warning(f"Failed to process the following tickers: {', '.join(failed_tickers)}")
 
 class VectorbtTradingStrategy:
     def __init__(self, processed_data, decision_thresholds, scoring_rules, take_profit_pct, stop_loss_pct):
@@ -332,8 +364,7 @@ class VectorbtTradingStrategy:
         self.transaction_log = []
         self.portfolio_history = []
         self.cash_balance = 100000  # Initial capital
-        self.shares_held = 0
-        self.position_value = 0
+        self.positions = {}  # Track positions for each ticker
         self.fee_rate = 0.001  # 0.1% transaction fee
         self.trade_count = 0
         self.first_trade_date = None
@@ -352,31 +383,34 @@ class VectorbtTradingStrategy:
             entries = pd.Series(False, index=data_df.index)
             exits = pd.Series(False, index=data_df.index)
 
-            in_position = False
-            entry_price = 0
-            entry_date = None
+            # Initialize position tracking for this ticker
+            self.positions[ticker] = {'shares': 0, 'entry_price': 0, 'entry_date': None}
 
             for i in range(len(data_df)):
                 current_date = data_df.index[i]
                 current_price = close_prices.iloc[i]
 
                 # Calculate current portfolio value
-                current_portfolio_value = self.shares_held * current_price + self.cash_balance
+                total_position_value = sum(pos['shares'] * self.processed_data[t]['Close'].loc[current_date] 
+                                         for t, pos in self.positions.items() 
+                                         if pos['shares'] > 0 and current_date in self.processed_data[t].index)
+                current_portfolio_value = total_position_value + self.cash_balance
+                
                 self.portfolio_history.append({
                     'date': current_date,
                     'portfolio_value': current_portfolio_value,
                     'cash': self.cash_balance,
-                    'position_value': self.shares_held * current_price,
-                    'shares': self.shares_held
+                    'position_value': total_position_value,
+                    'ticker': ticker
                 })
 
                 # Entry logic
-                if not in_position:
+                if self.positions[ticker]['shares'] == 0:  # Not in position for this ticker
                     score = data_df['Total_Score'].iloc[i]
                     if score >= self.decision_thresholds['buy']:
-                        # Calculate position size (100% of portfolio)
-                        position_value = self.cash_balance
-                        shares = int(position_value / current_price)
+                        # Calculate position size (use available cash divided by number of tickers)
+                        available_cash = self.cash_balance / len(self.processed_data)
+                        shares = int(available_cash / current_price)
                         if shares == 0:  # Not enough cash
                             continue
 
@@ -389,10 +423,11 @@ class VectorbtTradingStrategy:
 
                         # Execute buy
                         entries.iloc[i] = True
-                        in_position = True
-                        entry_price = current_price
-                        entry_date = current_date
-                        self.shares_held = shares
+                        self.positions[ticker] = {
+                            'shares': shares,
+                            'entry_price': current_price,
+                            'entry_date': current_date
+                        }
                         self.cash_balance -= total_cost
                         self.trade_count += 1
 
@@ -403,25 +438,26 @@ class VectorbtTradingStrategy:
                         # Log transaction
                         self.transaction_log.append({
                             'date': current_date,
+                            'ticker': ticker,
                             'type': 'BUY',
                             'price': current_price,
                             'shares': shares,
                             'amount': cost,
                             'fee': fee,
                             'cash_balance': self.cash_balance,
-                            'portfolio_value': current_portfolio_value,
-                            'position_size_pct': 100
+                            'portfolio_value': current_portfolio_value
                         })
 
                 # Exit logic
-                if in_position:
+                if self.positions[ticker]['shares'] > 0:  # In position for this ticker
+                    entry_price = self.positions[ticker]['entry_price']
+                    shares = self.positions[ticker]['shares']
                     returns = (current_price - entry_price) / entry_price
 
                     # Take profit
                     if returns >= self.take_profit_pct / 100:
                         exits.iloc[i] = True
-                        in_position = False
-                        proceeds = self.shares_held * current_price
+                        proceeds = shares * current_price
                         fee = proceeds * self.fee_rate
                         net_proceeds = proceeds - fee
                         self.cash_balance += net_proceeds
@@ -430,23 +466,23 @@ class VectorbtTradingStrategy:
                         # Log transaction
                         self.transaction_log.append({
                             'date': current_date,
+                            'ticker': ticker,
                             'type': 'SELL-TP',
                             'price': current_price,
-                            'shares': self.shares_held,
+                            'shares': shares,
                             'amount': proceeds,
                             'fee': fee,
                             'cash_balance': self.cash_balance,
                             'portfolio_value': self.cash_balance,
                             'profit_pct': returns * 100
                         })
-                        self.shares_held = 0
+                        self.positions[ticker] = {'shares': 0, 'entry_price': 0, 'entry_date': None}
                         self.trade_count += 1
 
                     # Stop loss
                     elif returns <= -self.stop_loss_pct / 100:
                         exits.iloc[i] = True
-                        in_position = False
-                        proceeds = self.shares_held * current_price
+                        proceeds = shares * current_price
                         fee = proceeds * self.fee_rate
                         net_proceeds = proceeds - fee
                         self.cash_balance += net_proceeds
@@ -455,16 +491,17 @@ class VectorbtTradingStrategy:
                         # Log transaction
                         self.transaction_log.append({
                             'date': current_date,
+                            'ticker': ticker,
                             'type': 'SELL-SL',
                             'price': current_price,
-                            'shares': self.shares_held,
+                            'shares': shares,
                             'amount': proceeds,
                             'fee': fee,
                             'cash_balance': self.cash_balance,
                             'portfolio_value': self.cash_balance,
                             'profit_pct': returns * 100
                         })
-                        self.shares_held = 0
+                        self.positions[ticker] = {'shares': 0, 'entry_price': 0, 'entry_date': None}
                         self.trade_count += 1
 
             all_entries[ticker] = entries
@@ -592,19 +629,32 @@ class StrategyOptimizer:
 # Streamlit App
 def main():
     st.title("Trading Strategy Optimizer")
-    st.markdown("Optimize and backtest algorithmic trading strategies with technical indicators")
+    st.markdown("Optimize and backtest algorithmic trading strategies with multiple stocks")
 
     # Sidebar for user inputs
     with st.sidebar:
         st.header("Configuration")
         
-        # Date range inputs (moved from main code lines 2,3,4)
+        # Date range inputs
         end_date = st.date_input("End Date", value=datetime.now().date())
         start_date = st.date_input("Start Date", value=(datetime.now() - timedelta(days=365)).date())
         
-        # Ticker input
-        ticker_input = st.text_input("Stock Ticker", value="AMZN", help="Enter stock symbol (e.g., AAPL, GOOGL)")
-        tickers = [ticker_input.upper().strip()] if ticker_input else ['AMZN']
+        # Multi-ticker input with improved UI
+        st.subheader("Stock Selection")
+        ticker_input = st.text_area(
+            "Stock Tickers", 
+            value="AAPL, GOOGL, MSFT, AMZN", 
+            height=100,
+            help="Enter stock symbols separated by commas, semicolons, or spaces.\nExample: AAPL, GOOGL, MSFT or AAPL GOOGL MSFT"
+        )
+        
+        # Parse and display tickers
+        tickers = parse_tickers(ticker_input)
+        if tickers:
+            st.success(f"Selected tickers: {', '.join(tickers)}")
+            st.info(f"Total: {len(tickers)} stocks")
+        else:
+            st.error("Please enter at least one valid ticker symbol")
         
         st.divider()
         
@@ -623,11 +673,18 @@ def main():
         
         st.divider()
         
+        # Analysis options
+        st.subheader("Analysis Options")
+        show_individual_charts = st.checkbox("Show Individual Stock Charts", value=False)
+        show_correlation_matrix = st.checkbox("Show Correlation Matrix", value=True)
+        
+        st.divider()
+        
         # Run analysis button
         run_analysis = st.button("Run Analysis", type="primary", use_container_width=True)
 
     # Main panel
-    if run_analysis:
+    if run_analysis and tickers:
         with st.spinner("Loading data and running analysis..."):
             # Convert dates to strings
             start_date_str = start_date.strftime('%Y-%m-%d')
@@ -666,122 +723,280 @@ def main():
                     analyzer.scoring_rules['sma_cross']['weight'] = best_weights[4]
                     
                     # Display optimal weights
-                    st.subheader("Optimal Weights")
+                    st.subheader("Optimal Weight Distribution")
                     weights_df = pd.DataFrame({
                         'Indicator': ['Predicted Return', 'Confidence Interval', 'RSI', 'Bollinger Bands', 'SMA Cross'],
-                        'Weight': best_weights
+                        'Weight': best_weights,
+                        'Percentage': [f"{w*100:.1f}%" for w in best_weights]
                     })
-                    st.dataframe(weights_df, use_container_width=True)
+                    
+                    col1, col2 = st.columns([1, 1])
+                    with col1:
+                        st.dataframe(weights_df, use_container_width=True)
+                    
+                    with col2:
+                        # Create pie chart of weights
+                        fig_pie = px.pie(
+                            weights_df, 
+                            values='Weight', 
+                            names='Indicator',
+                            title="Weight Distribution"
+                        )
+                        st.plotly_chart(fig_pie, use_container_width=True)
             
             # Run final analysis with optimal/default weights
             analyzer.analyze_stocks()
             
-            # Display stock data and metrics
-            st.header(f"Analysis Results for {tickers[0]}")
+            if not analyzer.processed_data:
+                st.error("No valid data was processed for any of the selected tickers.")
+                return
             
-            if tickers[0] in analyzer.processed_data and not analyzer.processed_data[tickers[0]].empty:
-                data = analyzer.processed_data[tickers[0]]
-                
-                # Calculate buy and hold return
-                last_price = data['Close'].iloc[-1]
-                first_price = data['Close'].iloc[0]
-                buy_hold_return = ((last_price - first_price) / first_price) * 100
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Current Price", f"${last_price:.2f}")
-                with col2:
-                    st.metric("Buy & Hold Return", f"{buy_hold_return:.2f}%")
-                with col3:
-                    st.metric("Data Points", len(data))
-                
-                # Create price chart with technical indicators
-                fig = make_subplots(
-                    rows=3, cols=1,
-                    subplot_titles=['Price & Moving Averages', 'RSI', 'Total Score'],
-                    vertical_spacing=0.08,
-                    row_heights=[0.6, 0.2, 0.2]
-                )
-                
-                # Price chart
-                fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Close Price', line=dict(color='blue')), row=1, col=1)
-                fig.add_trace(go.Scatter(x=data.index, y=data['SMA_20'], name='SMA 20', line=dict(color='orange')), row=1, col=1)
-                fig.add_trace(go.Scatter(x=data.index, y=data['SMA_50'], name='SMA 50', line=dict(color='red')), row=1, col=1)
-                fig.add_trace(go.Scatter(x=data.index, y=data['BB_upper'], name='BB Upper', line=dict(color='gray', dash='dash')), row=1, col=1)
-                fig.add_trace(go.Scatter(x=data.index, y=data['BB_lower'], name='BB Lower', line=dict(color='gray', dash='dash')), row=1, col=1)
-                
-                # RSI chart
-                fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], name='RSI', line=dict(color='purple')), row=2, col=1)
-                fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-                fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
-                
-                # Score chart
-                fig.add_trace(go.Scatter(x=data.index, y=data['Total_Score'], name='Total Score', line=dict(color='green')), row=3, col=1)
-                fig.add_hline(y=buy_threshold, line_dash="dash", line_color="red", row=3, col=1)
-                
-                fig.update_layout(height=800, title_text=f"Technical Analysis for {tickers[0]}")
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Run strategy backtest
-                st.header("Strategy Backtest Results")
-                strategy = VectorbtTradingStrategy(
-                    analyzer.processed_data,
-                    {'buy': buy_threshold},
-                    analyzer.scoring_rules,
-                    take_profit_pct,
-                    stop_loss_pct
-                )
-                price_data, entries, exits = strategy.generate_vbt_signals()
-                
-                if not price_data.empty and strategy.transaction_log:
-                    # Create portfolio performance chart
-                    portfolio_df = pd.DataFrame(strategy.portfolio_history)
-                    portfolio_df['date'] = pd.to_datetime(portfolio_df['date'])
+            # Display portfolio overview
+            st.header("Portfolio Overview")
+            
+            # Calculate portfolio metrics
+            portfolio_metrics = []
+            for ticker in analyzer.tickers:
+                if ticker in analyzer.processed_data and not analyzer.processed_data[ticker].empty:
+                    data = analyzer.processed_data[ticker]
+                    last_price = data['Close'].iloc[-1]
+                    first_price = data['Close'].iloc[0]
+                    buy_hold_return = ((last_price - first_price) / first_price) * 100
+                    current_score = data['Total_Score'].iloc[-1] if not data['Total_Score'].empty else 0
                     
-                    fig_portfolio = go.Figure()
-                    fig_portfolio.add_trace(go.Scatter(
-                        x=portfolio_df['date'], 
-                        y=portfolio_df['portfolio_value'],
-                        mode='lines',
-                        name='Portfolio Value',
-                        line=dict(color='green', width=2)
-                    ))
-                    fig_portfolio.update_layout(
-                        title="Portfolio Performance Over Time",
-                        xaxis_title="Date",
-                        yaxis_title="Portfolio Value ($)",
-                        height=400
-                    )
-                    st.plotly_chart(fig_portfolio, use_container_width=True)
+                    portfolio_metrics.append({
+                        'Ticker': ticker,
+                        'Current Price': f"${last_price:.2f}",
+                        'Buy & Hold Return': f"{buy_hold_return:.2f}%",
+                        'Current Score': f"{current_score:.2f}",
+                        'Data Points': len(data)
+                    })
+            
+            if portfolio_metrics:
+                portfolio_df = pd.DataFrame(portfolio_metrics)
+                st.dataframe(portfolio_df, use_container_width=True)
+                
+                # Show correlation matrix if requested
+                if show_correlation_matrix and len(analyzer.tickers) > 1:
+                    st.subheader("Stock Price Correlation Matrix")
                     
-                    # Calculate final metrics
-                    initial_value = 100000
-                    final_value = strategy.cash_balance
-                    total_return = ((final_value - initial_value) / initial_value) * 100
+                    # Create correlation matrix
+                    price_data = {}
+                    for ticker in analyzer.tickers:
+                        if ticker in analyzer.processed_data:
+                            price_data[ticker] = analyzer.processed_data[ticker]['Close']
                     
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric("Initial Capital", f"${initial_value:,.2f}")
-                    with col2:
-                        st.metric("Final Value", f"${final_value:,.2f}")
-                    with col3:
-                        st.metric("Total Return", f"{total_return:.1f}%")
-                    with col4:
-                        st.metric("Number of Trades", strategy.trade_count)
-                    
-                    # Display transaction log
-                    st.subheader("Transaction Log")
-                    if strategy.transaction_log:
-                        df_transactions = pd.DataFrame(strategy.transaction_log)
-                        df_transactions['date'] = df_transactions['date'].dt.strftime('%Y-%m-%d')
-                        st.dataframe(df_transactions, use_container_width=True)
-                    else:
-                        st.info("No transactions were executed with current parameters")
+                    if len(price_data) > 1:
+                        corr_df = pd.DataFrame(price_data).corr()
                         
+                        fig_corr = px.imshow(
+                            corr_df,
+                            text_auto=True,
+                            aspect="auto",
+                            title="Stock Price Correlation Matrix",
+                            color_continuous_scale="RdBu_r"
+                        )
+                        st.plotly_chart(fig_corr, use_container_width=True)
+            
+            # Run strategy backtest
+            st.header("Multi-Ticker Strategy Backtest Results")
+            strategy = VectorbtTradingStrategy(
+                analyzer.processed_data,
+                {'buy': buy_threshold},
+                analyzer.scoring_rules,
+                take_profit_pct,
+                stop_loss_pct
+            )
+            price_data, entries, exits = strategy.generate_vbt_signals()
+            
+            if not price_data.empty and strategy.transaction_log:
+                # Create portfolio performance chart
+                portfolio_df = pd.DataFrame(strategy.portfolio_history)
+                portfolio_df['date'] = pd.to_datetime(portfolio_df['date'])
+                
+                # Aggregate portfolio history by date (remove duplicates)
+                portfolio_agg = portfolio_df.groupby('date').agg({
+                    'portfolio_value': 'first',
+                    'cash': 'first'
+                }).reset_index()
+                
+                fig_portfolio = go.Figure()
+                fig_portfolio.add_trace(go.Scatter(
+                    x=portfolio_agg['date'], 
+                    y=portfolio_agg['portfolio_value'],
+                    mode='lines',
+                    name='Portfolio Value',
+                    line=dict(color='green', width=2)
+                ))
+                
+                # Add buy/sell markers for all tickers
+                transactions_df = pd.DataFrame(strategy.transaction_log)
+                if not transactions_df.empty:
+                    buy_transactions = transactions_df[transactions_df['type'] == 'BUY']
+                    sell_transactions = transactions_df[transactions_df['type'].str.startswith('SELL')]
+                    
+                    if not buy_transactions.empty:
+                        fig_portfolio.add_trace(go.Scatter(
+                            x=buy_transactions['date'],
+                            y=buy_transactions['portfolio_value'],
+                            mode='markers',
+                            name='Buy Orders',
+                            marker=dict(color='blue', size=10, symbol='triangle-up'),
+                            text=buy_transactions['ticker'],
+                            hovertemplate='<b>%{text}</b><br>Buy: $%{y:,.0f}<br>%{x}<extra></extra>'
+                        ))
+                    
+                    if not sell_transactions.empty:
+                        fig_portfolio.add_trace(go.Scatter(
+                            x=sell_transactions['date'],
+                            y=sell_transactions['portfolio_value'],
+                            mode='markers',
+                            name='Sell Orders',
+                            marker=dict(color='red', size=10, symbol='triangle-down'),
+                            text=sell_transactions['ticker'],
+                            hovertemplate='<b>%{text}</b><br>Sell: $%{y:,.0f}<br>%{x}<extra></extra>'
+                        ))
+                
+                fig_portfolio.update_layout(
+                    title="Multi-Ticker Portfolio Performance Over Time",
+                    xaxis_title="Date",
+                    yaxis_title="Portfolio Value ($)",
+                    height=500,
+                    hovermode='x unified'
+                )
+                st.plotly_chart(fig_portfolio, use_container_width=True)
+                
+                # Calculate final metrics
+                initial_value = 100000
+                final_value = strategy.cash_balance + sum(
+                    pos['shares'] * analyzer.processed_data[ticker]['Close'].iloc[-1] 
+                    for ticker, pos in strategy.positions.items() 
+                    if pos['shares'] > 0 and ticker in analyzer.processed_data
+                )
+                total_return = ((final_value - initial_value) / initial_value) * 100
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Initial Capital", f"${initial_value:,.2f}")
+                with col2:
+                    st.metric("Final Value", f"${final_value:,.2f}")
+                with col3:
+                    st.metric("Total Return", f"{total_return:.1f}%")
+                with col4:
+                    st.metric("Number of Trades", strategy.trade_count)
+                
+                # Display transaction log
+                st.subheader("Transaction Log")
+                if strategy.transaction_log:
+                    df_transactions = pd.DataFrame(strategy.transaction_log)
+                    df_transactions['date'] = df_transactions['date'].dt.strftime('%Y-%m-%d')
+                    
+                    # Add color coding for transaction types
+                    def color_transactions(val):
+                        if val == 'BUY':
+                            return 'background-color: lightblue'
+                        elif val.startswith('SELL'):
+                            return 'background-color: lightcoral'
+                        return ''
+                    
+                    styled_df = df_transactions.style.applymap(color_transactions, subset=['type'])
+                    st.dataframe(styled_df, use_container_width=True)
+                    
+                    # Transaction summary by ticker
+                    st.subheader("Transaction Summary by Ticker")
+                    ticker_summary = df_transactions.groupby('ticker').agg({
+                        'type': 'count',
+                        'amount': 'sum',
+                        'fee': 'sum'
+                    }).rename(columns={'type': 'total_transactions'})
+                    
+                    # Calculate profit/loss by ticker
+                    ticker_pl = {}
+                    for ticker in df_transactions['ticker'].unique():
+                        ticker_trades = df_transactions[df_transactions['ticker'] == ticker]
+                        buys = ticker_trades[ticker_trades['type'] == 'BUY']['amount'].sum()
+                        sells = ticker_trades[ticker_trades['type'].str.startswith('SELL')]['amount'].sum()
+                        fees = ticker_trades['fee'].sum()
+                        pl = sells - buys - fees
+                        ticker_pl[ticker] = pl
+                    
+                    ticker_summary['profit_loss'] = ticker_summary.index.map(ticker_pl)
+                    ticker_summary['profit_loss_pct'] = (ticker_summary['profit_loss'] / ticker_summary['amount']) * 100
+                    
+                    st.dataframe(ticker_summary, use_container_width=True)
                 else:
-                    st.warning("No trades were executed with the current parameters. Try adjusting the buy threshold or other settings.")
+                    st.info("No transactions were executed with current parameters")
+                
+                # Show individual stock charts if requested
+                if show_individual_charts:
+                    st.header("Individual Stock Analysis")
+                    
+                    # Create tabs for each stock
+                    if len(analyzer.tickers) > 1:
+                        tabs = st.tabs(analyzer.tickers)
+                        for i, ticker in enumerate(analyzer.tickers):
+                            with tabs[i]:
+                                display_individual_stock_chart(analyzer.processed_data[ticker], ticker, buy_threshold)
+                    else:
+                        # Single stock
+                        ticker = analyzer.tickers[0]
+                        display_individual_stock_chart(analyzer.processed_data[ticker], ticker, buy_threshold)
+                        
             else:
-                st.error(f"Failed to process data for {tickers[0]}")
+                st.warning("No trades were executed with the current parameters. Try adjusting the buy threshold or other settings.")
+    
+    elif run_analysis and not tickers:
+        st.error("Please enter at least one valid ticker symbol before running the analysis.")
+
+def display_individual_stock_chart(data, ticker, buy_threshold):
+    """Display individual stock analysis chart"""
+    if data.empty:
+        st.error(f"No data available for {ticker}")
+        return
+    
+    # Calculate metrics
+    last_price = data['Close'].iloc[-1]
+    first_price = data['Close'].iloc[0]
+    buy_hold_return = ((last_price - first_price) / first_price) * 100
+    current_score = data['Total_Score'].iloc[-1] if not data['Total_Score'].empty else 0
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Current Price", f"${last_price:.2f}")
+    with col2:
+        st.metric("Buy & Hold Return", f"{buy_hold_return:.2f}%")
+    with col3:
+        st.metric("Current Score", f"{current_score:.2f}")
+    
+    # Create technical analysis chart
+    fig = make_subplots(
+        rows=3, cols=1,
+        subplot_titles=[f'{ticker} Price & Moving Averages', 'RSI', 'Total Score'],
+        vertical_spacing=0.08,
+        row_heights=[0.6, 0.2, 0.2]
+    )
+    
+    # Price chart
+    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Close Price', line=dict(color='blue')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=data.index, y=data['SMA_20'], name='SMA 20', line=dict(color='orange')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=data.index, y=data['SMA_50'], name='SMA 50', line=dict(color='red')), row=1, col=1)
+    
+    if 'BB_upper' in data.columns and 'BB_lower' in data.columns:
+        fig.add_trace(go.Scatter(x=data.index, y=data['BB_upper'], name='BB Upper', line=dict(color='gray', dash='dash')), row=1, col=1)
+        fig.add_trace(go.Scatter(x=data.index, y=data['BB_lower'], name='BB Lower', line=dict(color='gray', dash='dash')), row=1, col=1)
+    
+    # RSI chart
+    if 'RSI' in data.columns:
+        fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], name='RSI', line=dict(color='purple')), row=2, col=1)
+        fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
+    
+    # Score chart
+    fig.add_trace(go.Scatter(x=data.index, y=data['Total_Score'], name='Total Score', line=dict(color='green')), row=3, col=1)
+    fig.add_hline(y=buy_threshold, line_dash="dash", line_color="red", row=3, col=1, annotation_text="Buy Threshold")
+    
+    fig.update_layout(height=800, title_text=f"Technical Analysis for {ticker}", showlegend=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
     main()
