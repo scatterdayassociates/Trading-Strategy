@@ -633,7 +633,7 @@ def main():
 
     # Sidebar for user inputs
     with st.sidebar:
-        st.header("Configuration")
+        st.header("Scenario Setup")
         
         # Date range inputs
         end_date = st.date_input("End Date", value=datetime.now().date())
@@ -695,7 +695,7 @@ def main():
             
             # Run optimization if selected
             if run_optimization:
-                st.header("Weight Optimization Results")
+                st.header("Scenario Optimization Results")
                 optimizer = StrategyOptimizer(analyzer)
                 best_result, all_results = optimizer.optimize_weights(
                     max_combinations=max_combinations,
@@ -704,15 +704,8 @@ def main():
                 )
                 
                 if best_result:
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric("Best Total Return", f"{best_result['total_return']:.1f}%")
-                    with col2:
-                        st.metric("Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
-                    with col3:
-                        st.metric("Max Drawdown", f"{best_result['max_drawdown']:.1f}%")
-                    with col4:
-                        st.metric("Win Rate", f"{best_result['win_rate']:.1f}%")
+                    # Store best_result for later use
+                    best_result_stored = best_result if run_optimization else None
                     
                     # Set optimal weights
                     best_weights = best_result['weights']
@@ -722,83 +715,71 @@ def main():
                     analyzer.scoring_rules['bb_position']['weight'] = best_weights[3]
                     analyzer.scoring_rules['sma_cross']['weight'] = best_weights[4]
                     
-                    # Display optimal weights
+                if run_optimization and 'best_result' in locals() and best_result:
                     st.subheader("Optimal Weight Distribution")
+                    
+                    # Recreate weights_df here
+                    best_weights = best_result['weights']
                     weights_df = pd.DataFrame({
                         'Indicator': ['Predicted Return', 'Confidence Interval', 'RSI', 'Bollinger Bands', 'SMA Cross'],
                         'Weight': best_weights,
                         'Percentage': [f"{w*100:.1f}%" for w in best_weights]
                     })
                     
+                    # Cards in two columns
                     col1, col2 = st.columns([1, 1])
+                    
+                    # Split the weights_df into two groups
+                    first_half = weights_df.iloc[:3]  # First 3 indicators
+                    second_half = weights_df.iloc[3:]  # Last 2 indicators
+                    
                     with col1:
-                        st.dataframe(weights_df, use_container_width=True)
+                        # Create flash cards for first half
+                        for i, row in first_half.iterrows():
+                            indicator = row['Indicator']
+                            weight = row['Weight']
+                            percentage = row['Percentage']
+                            
+                            st.markdown(f"""
+                            <div style="
+                                background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+                                padding: 15px;
+                                border-radius: 10px;
+                                margin-bottom: 10px;
+                                color: white;
+                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            ">
+                                <h4 style="margin: 0; color: white; font-size: 16px;">{indicator}</h4>
+                                <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #fbbf24;">{percentage}</p>
+                                <p style="margin: 0; font-size: 12px; color: #e5e7eb;">Weight: {weight:.3f}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
                     
                     with col2:
-                        # Create pie chart of weights
-                        fig_pie = px.pie(
-                            weights_df, 
-                            values='Weight', 
-                            names='Indicator',
-                            title="Weight Distribution"
-                        )
-                        st.plotly_chart(fig_pie, use_container_width=True)
-            
+                        # Create flash cards for second half
+                        for i, row in second_half.iterrows():
+                            indicator = row['Indicator']
+                            weight = row['Weight']
+                            percentage = row['Percentage']
+                            
+                            st.markdown(f"""
+                            <div style="
+                                background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+                                padding: 15px;
+                                border-radius: 10px;
+                                margin-bottom: 10px;
+                                color: white;
+                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            ">
+                                <h4 style="margin: 0; color: white; font-size: 16px;">{indicator}</h4>
+                                <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #fbbf24;">{percentage}</p>
+                                <p style="margin: 0; font-size: 12px; color: #e5e7eb;">Weight: {weight:.3f}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                   
             # Run final analysis with optimal/default weights
             analyzer.analyze_stocks()
-            
-            if not analyzer.processed_data:
-                st.error("No valid data was processed for any of the selected tickers.")
-                return
-            
-            # Display portfolio overview
-            st.header("Portfolio Overview")
-            
-            # Calculate portfolio metrics
-            portfolio_metrics = []
-            for ticker in analyzer.tickers:
-                if ticker in analyzer.processed_data and not analyzer.processed_data[ticker].empty:
-                    data = analyzer.processed_data[ticker]
-                    last_price = data['Close'].iloc[-1]
-                    first_price = data['Close'].iloc[0]
-                    buy_hold_return = ((last_price - first_price) / first_price) * 100
-                    current_score = data['Total_Score'].iloc[-1] if not data['Total_Score'].empty else 0
-                    
-                    portfolio_metrics.append({
-                        'Ticker': ticker,
-                        'Current Price': f"${last_price:.2f}",
-                        'Buy & Hold Return': f"{buy_hold_return:.2f}%",
-                        'Current Score': f"{current_score:.2f}",
-                        'Data Points': len(data)
-                    })
-            
-            if portfolio_metrics:
-                portfolio_df = pd.DataFrame(portfolio_metrics)
-                st.dataframe(portfolio_df, use_container_width=True)
-                
-                # Show correlation matrix if requested
-                if show_correlation_matrix and len(analyzer.tickers) > 1:
-                    st.subheader("Stock Price Correlation Matrix")
-                    
-                    # Create correlation matrix
-                    price_data = {}
-                    for ticker in analyzer.tickers:
-                        if ticker in analyzer.processed_data:
-                            price_data[ticker] = analyzer.processed_data[ticker]['Close']
-                    
-                    if len(price_data) > 1:
-                        corr_df = pd.DataFrame(price_data).corr()
-                        
-                        fig_corr = px.imshow(
-                            corr_df,
-                            text_auto=True,
-                            aspect="auto",
-                            title="Stock Price Correlation Matrix",
-                            color_continuous_scale="RdBu_r"
-                        )
-                        st.plotly_chart(fig_corr, use_container_width=True)
-            
-            # Run strategy backtest
+                 # Run strategy backtest
             st.header("Multi-Ticker Strategy Backtest Results")
             strategy = VectorbtTradingStrategy(
                 analyzer.processed_data,
@@ -828,7 +809,133 @@ def main():
                     name='Portfolio Value',
                     line=dict(color='green', width=2)
                 ))
+            # Calculate final metrics
+                initial_value = 100000
+                final_value = strategy.cash_balance + sum(
+                    pos['shares'] * analyzer.processed_data[ticker]['Close'].iloc[-1] 
+                    for ticker, pos in strategy.positions.items() 
+                    if pos['shares'] > 0 and ticker in analyzer.processed_data
+                )
+                total_return = ((final_value - initial_value) / initial_value) * 100
                 
+                # Core Performance Metrics (First Row)
+                st.subheader("Core Performance Metrics")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Initial Capital", f"${initial_value:,.2f}")
+                with col2:
+                    st.metric("Final Value", f"${final_value:,.2f}")
+                with col3:
+                    st.metric("Total Return", f"{total_return:.1f}%")
+                with col4:
+                    st.metric("Number of Trades", strategy.trade_count)
+
+                # Advanced Performance Metrics (Second Row)
+                st.subheader("Optimization Results")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    if run_optimization and best_result:
+                        st.metric("Best Total Return", f"{best_result['total_return']:.1f}%")
+                    else:
+                        st.metric("Best Total Return", "Not calculated")
+                with col2:
+                    if run_optimization and best_result:
+                        st.metric("Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
+                    else:
+                        st.metric("Sharpe Ratio", "Not calculated")
+                with col3:
+                    if run_optimization and best_result:
+                        st.metric("Max Drawdown", f"{best_result['max_drawdown']:.1f}%")
+                    else:
+                        st.metric("Max Drawdown", "Not calculated")
+                with col4:
+                    if run_optimization and best_result:
+                        st.metric("Win Rate", f"{best_result['win_rate']:.1f}%")
+                    else:
+                        st.metric("Win Rate", "Not calculated")
+                
+            
+            if not analyzer.processed_data:
+                st.error("No valid data was processed for any of the selected tickers.")
+                return
+            
+            # Display portfolio overview
+            st.header("Portfolio Overview")
+            
+            # Calculate portfolio metrics
+            portfolio_metrics = []
+            for ticker in analyzer.tickers:
+                if ticker in analyzer.processed_data and not analyzer.processed_data[ticker].empty:
+                    data = analyzer.processed_data[ticker]
+                    last_price = data['Close'].iloc[-1]
+                    first_price = data['Close'].iloc[0]
+                    buy_hold_return = ((last_price - first_price) / first_price) * 100
+                    current_score = data['Total_Score'].iloc[-1] if not data['Total_Score'].empty else 0
+                    
+                    portfolio_metrics.append({
+                        'Ticker': ticker,
+                        'Current Price': f"${last_price:.2f}",
+                        'Buy & Hold Return': f"{buy_hold_return:.2f}%",
+                        'Current Score': f"{current_score:.2f}",
+                        'Data Points': len(data)
+                    })
+            
+            if portfolio_metrics:
+                portfolio_df = pd.DataFrame(portfolio_metrics)
+                st.dataframe(portfolio_df, use_container_width=True)
+
+                # Bar chart representation of optimal weights
+                if run_optimization and best_result:
+                    st.subheader("Weight Distribution Chart")
+                    weights_df = pd.DataFrame({
+                        'Indicator': ['Predicted Return', 'Confidence Interval', 'RSI', 'Bollinger Bands', 'SMA Cross'],
+                        'Weight': best_weights,
+                        'Percentage': [f"{w*100:.1f}%" for w in best_weights]
+                    })
+                    
+                    fig_bar = px.bar(
+                        weights_df, 
+                        x='Indicator', 
+                        y='Weight',
+                        title="Optimal Weight Distribution",
+                        color_discrete_sequence=["#004c94"]  # Dark blue shade
+                    )
+                    fig_bar.update_layout(
+                        xaxis_title="Indicators",
+                        yaxis_title="Weight",
+                        showlegend=False,
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)'
+                    )
+                    fig_bar.update_traces(
+                        texttemplate='%{y:.2f}', 
+                        textposition='outside'
+                    )
+                    st.plotly_chart(fig_bar, use_container_width=True)
+                
+                # Show correlation matrix if requested
+                if show_correlation_matrix and len(analyzer.tickers) > 1:
+                    st.subheader("Stock Price Correlation Matrix")
+                    
+                    # Create correlation matrix
+                    price_data = {}
+                    for ticker in analyzer.tickers:
+                        if ticker in analyzer.processed_data:
+                            price_data[ticker] = analyzer.processed_data[ticker]['Close']
+                    
+                    if len(price_data) > 1:
+                        corr_df = pd.DataFrame(price_data).corr()
+                        
+                        fig_corr = px.imshow(
+                            corr_df,
+                            text_auto=True,
+                            aspect="auto",
+                            title="Stock Price Correlation Matrix",
+                            color_continuous_scale="RdBu_r"
+                        )
+                        st.plotly_chart(fig_corr, use_container_width=True)
+
+            
                 # Add buy/sell markers for all tickers
                 transactions_df = pd.DataFrame(strategy.transaction_log)
                 if not transactions_df.empty:
@@ -866,24 +973,6 @@ def main():
                 )
                 st.plotly_chart(fig_portfolio, use_container_width=True)
                 
-                # Calculate final metrics
-                initial_value = 100000
-                final_value = strategy.cash_balance + sum(
-                    pos['shares'] * analyzer.processed_data[ticker]['Close'].iloc[-1] 
-                    for ticker, pos in strategy.positions.items() 
-                    if pos['shares'] > 0 and ticker in analyzer.processed_data
-                )
-                total_return = ((final_value - initial_value) / initial_value) * 100
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Initial Capital", f"${initial_value:,.2f}")
-                with col2:
-                    st.metric("Final Value", f"${final_value:,.2f}")
-                with col3:
-                    st.metric("Total Return", f"{total_return:.1f}%")
-                with col4:
-                    st.metric("Number of Trades", strategy.trade_count)
                 
                 # Display transaction log
                 st.subheader("Transaction Log")
