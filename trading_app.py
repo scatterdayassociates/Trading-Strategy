@@ -1246,7 +1246,7 @@ def main():
         
         # Run analysis button
         st.markdown("<br>", unsafe_allow_html=True)
-        run_analysis = st.button("🚀 Run Optimization", type="primary", use_container_width=True)
+        run_analysis = st.button("Run Optimization", type="primary", use_container_width=True)
 
     # Main panel
     if run_analysis and tickers:
@@ -1759,4 +1759,5 @@ def display_individual_stock_chart(data, ticker, buy_threshold):
 
 if __name__ == "__main__":
     main()
+
 
