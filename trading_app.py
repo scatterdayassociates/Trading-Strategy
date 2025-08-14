@@ -23,6 +23,494 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=SF+Pro+Display:wght@400;500;600;700&display=swap');
+    
+    /* Global Typography */
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+        color: #1f2937;
+    }
+    
+    /* Dashboard Container */
+    .main .block-container {
+        padding: 40px 30px;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    
+    /* Main Dashboard Header */
+    .main-header {
+        text-align: center;
+        font-size: 32px;
+        font-weight: 600;
+        margin-bottom: 40px;
+        color: #1f2937;
+        letter-spacing: -0.02em;
+    }
+    
+    /* Enhanced Card Styles with Gradients */
+    .metric-card {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        border-radius: 16px;
+        padding: 32px 24px;
+        text-align: center;
+        margin: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+        border: none;
+        position: relative;
+        min-height: 270px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        color: white;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    .metric-card-with-tooltip {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border-radius: 16px;
+        padding: 24px;
+        text-align: center;
+        margin: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+        border: none;
+        position: relative;
+        color: white;
+    }
+    
+    .metric-card-with-tooltip:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    .metric-title {
+        font-size: 28px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 16px;
+        text-align: center;
+        letter-spacing: -0.01em;
+        line-height: 1.4;
+    }
+
+    .metric-value {
+        font-size: 38px;
+        font-weight: 700;
+        margin: 12px 0;
+        color: white;
+        letter-spacing: -0.02em;
+    }
+    
+    .metric-unit {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 400;
+        letter-spacing: -0.01em;
+    }
+    
+    /* Chart Card Styling */
+    .stPlotlyChart {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        margin: 12px 0;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .stPlotlyChart:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Performance Metrics Cards */
+    .performance-metric-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin: 8px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        border: none;
+        color: white;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .performance-metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .performance-metric-value {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 8px 0;
+        color: white;
+        letter-spacing: -0.02em;
+    }
+    
+    .performance-metric-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+    }
+    
+    /* Weight Distribution Cards */
+    .weight-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border: 1px solid #e2e8f0;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .weight-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .weight-card-gradient {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        color: white;
+    }
+    
+    .weight-card-gradient .weight-label {
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .weight-card-gradient .weight-value {
+        color: #fbbf24;
+    }
+    
+    .weight-card-gradient .weight-unit {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .weight-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+    
+    .weight-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #007bff;
+        margin: 4px 0;
+    }
+    
+    .weight-unit {
+        font-size: 12px;
+        color: #6c757d;
+        font-weight: 400;
+    }
+    
+    /* Tooltip Enhancements */
+    .tooltip-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .tooltip-icon {
+        font-size: 14px;
+        margin-left: 6px;
+        color: #0891b2;
+        cursor: help;
+        transition: color 0.2s ease;
+    }
+    
+    .tooltip-icon:hover {
+        color: #0c7489;
+    }
+    
+    .tooltip-text {
+        visibility: hidden;
+        width: 280px;
+        background: #1f2937;
+        color: #ffffff;
+        text-align: center;
+        border-radius: 8px;
+        padding: 12px;
+        position: absolute;
+        z-index: 1000;
+        bottom: 130%;
+        left: 50%;
+        margin-left: -140px;
+        opacity: 0;
+        transition: all 0.3s ease;
+        font-size: 12px;
+        line-height: 1.4;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        font-weight: 400;
+    }
+    
+    .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -6px;
+        border-width: 6px;
+        border-style: solid;
+        border-color: #1f2937 transparent transparent transparent;
+    }
+    
+    .tooltip-container:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+    
+    /* Delta Overlay Enhancements */
+    .delta-overlay {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: #f8fafc;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        width: fit-content;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .delta-item {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        font-size: 11px;
+        white-space: nowrap;
+        justify-content: center;
+    }
+
+    .delta-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    .delta-value {
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .delta-unit {
+        font-size: 10px;
+        color: #64748b;
+        font-weight: 400;
+    }
+        
+    /* Enhanced Expander Styles */
+    .streamlit-expanderHeader {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 20px 24px !important;
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        color: #1f2937 !important;
+        border: none !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+    }
+    
+    .streamlit-expanderContent {
+        background: #ffffff !important;
+        border-radius: 0 0 12px 12px !important;
+        padding: 24px !important;
+        border: none !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+        margin-bottom: 24px !important;
+    }
+    
+    .streamlit-expander {
+        border: none !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+        border-radius: 12px !important;
+        margin: 24px 0 !important;
+        background: #ffffff !important;
+    }
+    
+    /* Accuracy Card Enhancements */
+    .accuracy-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border: none;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .accuracy-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .accuracy-value {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 8px 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .accuracy-label {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+    }
+    
+    /* PLUTO Section Enhancements */
+    .pluto-container {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        padding: 28px;
+        border-radius: 12px;
+        margin: 20px 0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .pluto-item {
+        font-size: 15px;
+        color: #1f2937;
+        margin-bottom: 12px;
+        line-height: 1.5;
+    }
+    
+    .pluto-label {
+        font-weight: 600;
+        display: inline;
+        color: #374151;
+    }
+    
+    .pluto-value {
+        font-weight: 400;
+        display: inline;
+        color: #1f2937;
+    }
+    
+    .pluto-section-header {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 28px 0 16px 0;
+        border-bottom: 2px solid #0891b2;
+        padding-bottom: 8px;
+        letter-spacing: -0.01em;
+    }
+    
+    /* Enhanced Sidebar Styling */
+    .css-1d391kg {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        padding: 24px 20px;
+        border-right: 1px solid #e2e8f0;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Sidebar Section Headers */
+    .sidebar-header {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    
+    /* Sidebar Cards */
+    .sidebar-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e5e7eb;
+    }
+    
+    /* Button Enhancements */
+    .stButton > button {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 600;
+        font-size: 15px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
+    }
+    
+    /* Spacing improvements */
+    .element-container {
+        margin-bottom: 20px;
+    }
+    
+    /* Grid layout improvements */
+    .row-widget {
+        gap: 20px;
+    }
+    
+    /* Section Headers */
+    .section-header {
+        font-size: 24px;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 32px 0 20px 0;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #4f46e5;
+        position: relative;
+    }
+    
+    .section-header::before {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Set vectorbt theme
 vbt.settings.set_theme("dark")
 
@@ -248,68 +736,74 @@ class StockAnalyzer:
 
         scores_df = pd.DataFrame(index=data_df.index)
 
-        pred_ret_score = np.where(data_df.get('Predicted_Return', pd.Series(np.nan, index=data_df.index)) > 0,
+        # Predicted Return Score
+        pred_return = data_df.get('Predicted_Return', pd.Series(np.nan, index=data_df.index))
+        pred_ret_score = np.where(pred_return > 0,
                                    scoring_rules['predicted_return']['positive'],
                                    scoring_rules['predicted_return']['negative'])
         anomaly_col = data_df.get('Anomaly_Detected', pd.Series(False, index=data_df.index)).fillna(False)
-        zero_pred_score_cond = data_df.get('Predicted_Return', pd.Series(np.nan, index=data_df.index)).isna() | anomaly_col
+        zero_pred_score_cond = pred_return.isna() | anomaly_col
         pred_ret_score = np.where(zero_pred_score_cond, 0, pred_ret_score)
         scores_df['predicted_return'] = pred_ret_score
 
-        conf_low = data_df.get('Predicted_CI_Low')
-        conf_high = data_df.get('Predicted_CI_High')
-        conf_low_arr = conf_low.values if conf_low is not None else np.full(len(data_df), np.nan)
-        conf_high_arr = conf_high.values if conf_high is not None else np.full(len(data_df), np.nan)
-
+        # Confidence Interval Score
+        conf_low = data_df.get('Predicted_CI_Low', pd.Series(np.nan, index=data_df.index))
+        conf_high = data_df.get('Predicted_CI_High', pd.Series(np.nan, index=data_df.index))
+        
         ci_score = np.select(
-            [ (conf_low_arr > 0) & (conf_high_arr > 0), (conf_low_arr < 0) & (conf_high_arr < 0) ],
+            [ (conf_low > 0) & (conf_high > 0), (conf_low < 0) & (conf_high < 0) ],
             [ scoring_rules['confidence_interval']['both_positive'],
               scoring_rules['confidence_interval']['both_negative'] ],
             default=scoring_rules['confidence_interval']['mixed']
         )
-        zero_ci_score_cond = np.isnan(conf_low_arr) | np.isnan(conf_high_arr) | anomaly_col
+        zero_ci_score_cond = conf_low.isna() | conf_high.isna() | anomaly_col
         ci_score = np.where(zero_ci_score_cond, 0, ci_score)
         scores_df['confidence_interval'] = ci_score
 
-        rsi = data_df.get('RSI')
-        rsi_arr = rsi.values if rsi is not None else np.full(len(data_df), np.nan)
+        # RSI Score
+        rsi = data_df.get('RSI', pd.Series(np.nan, index=data_df.index))
         rsi_low, rsi_high = scoring_rules['rsi']['range']
         rsi_score = np.select(
-            [ rsi_arr < rsi_low, rsi_arr > rsi_high ],
+            [ rsi < rsi_low, rsi > rsi_high ],
             [ scoring_rules['rsi']['oversold'], scoring_rules['rsi']['overbought'] ],
             default=scoring_rules['rsi']['within_range']
         )
-        rsi_score = np.where(np.isnan(rsi_arr), 0, rsi_score)
+        rsi_score = np.where(rsi.isna(), 0, rsi_score)
         scores_df['rsi'] = rsi_score
 
-        bb_pos = data_df.get('BB_Position')
-        bb_pos_arr = bb_pos.values if bb_pos is not None else np.full(len(data_df), np.nan)
+        # Bollinger Bands Position Score
+        bb_pos = data_df.get('BB_Position', pd.Series(np.nan, index=data_df.index))
         bb_low, bb_high = scoring_rules['bb_position']['range']
         bb_pos_score = np.select(
-            [ bb_pos_arr < bb_low, bb_pos_arr > bb_high ],
+            [ bb_pos < bb_low, bb_pos > bb_high ],
             [ scoring_rules['bb_position']['below_range'], scoring_rules['bb_position']['above_range'] ],
             default=scoring_rules['bb_position']['within_range']
         )
-        bb_pos_score = np.where(np.isnan(bb_pos_arr), 0, bb_pos_score)
+        bb_pos_score = np.where(bb_pos.isna(), 0, bb_pos_score)
         scores_df['bb_position'] = bb_pos_score
 
-        sma20 = data_df.get('SMA_20')
-        sma50 = data_df.get('SMA_50')
-        sma20_arr = sma20.values if sma20 is not None else np.full(len(data_df), np.nan)
-        sma50_arr = sma50.values if sma50 is not None else np.full(len(data_df), np.nan)
+        # SMA Cross Score
+        sma20 = data_df.get('SMA_20', pd.Series(np.nan, index=data_df.index))
+        sma50 = data_df.get('SMA_50', pd.Series(np.nan, index=data_df.index))
 
         sma_cross_score = np.select(
-            [ sma20_arr > sma50_arr, sma20_arr < sma50_arr ],
+            [ sma20 > sma50, sma20 < sma50 ],
             [ scoring_rules['sma_cross']['sma20_above_sma50'], scoring_rules['sma_cross']['sma20_below_sma50'] ],
             default=0
         )
-        sma_cross_score = np.where(np.isnan(sma20_arr) | np.isnan(sma50_arr), 0, sma_cross_score)
+        sma_cross_score = np.where(sma20.isna() | sma50.isna(), 0, sma_cross_score)
         scores_df['sma_cross'] = sma_cross_score
 
+        # Calculate Total Score with proper weight application
         total_score = pd.Series(0.0, index=data_df.index)
         for indicator_name, rule in scoring_rules.items():
-            daily_scores = scores_df[indicator_name].fillna(0)
-            total_score += daily_scores * rule['weight']
+            if indicator_name in scores_df.columns:
+                daily_scores = scores_df[indicator_name].fillna(0)
+                total_score += daily_scores * rule['weight']
+
+        # Ensure total score is finite and within reasonable bounds
+        total_score = total_score.fillna(0)
+        total_score = np.clip(total_score, -2, 2)  # Clip to reasonable range
 
         data_df_with_scores = data_df.copy()
         data_df_with_scores['Total_Score'] = total_score
@@ -369,6 +863,17 @@ class VectorbtTradingStrategy:
         self.trade_count = 0
         self.first_trade_date = None
         self.last_trade_date = None
+        self.initial_capital = 100000
+
+    def calculate_portfolio_value(self, current_date):
+        """Calculate current portfolio value including cash and positions"""
+        total_position_value = 0
+        for ticker, pos in self.positions.items():
+            if pos['shares'] > 0 and ticker in self.processed_data:
+                if current_date in self.processed_data[ticker].index:
+                    current_price = self.processed_data[ticker].loc[current_date, 'Close']
+                    total_position_value += pos['shares'] * current_price
+        return self.cash_balance + total_position_value
 
     def generate_vbt_signals(self):
         all_entries = {}
@@ -391,18 +896,16 @@ class VectorbtTradingStrategy:
                 current_price = close_prices.iloc[i]
 
                 # Calculate current portfolio value
-                total_position_value = sum(pos['shares'] * self.processed_data[t]['Close'].loc[current_date] 
-                                         for t, pos in self.positions.items() 
-                                         if pos['shares'] > 0 and current_date in self.processed_data[t].index)
-                current_portfolio_value = total_position_value + self.cash_balance
+                current_portfolio_value = self.calculate_portfolio_value(current_date)
                 
-                self.portfolio_history.append({
-                    'date': current_date,
-                    'portfolio_value': current_portfolio_value,
-                    'cash': self.cash_balance,
-                    'position_value': total_position_value,
-                    'ticker': ticker
-                })
+                # Only add to portfolio history if it's a new date or value changed
+                if not self.portfolio_history or self.portfolio_history[-1]['date'] != current_date:
+                    self.portfolio_history.append({
+                        'date': current_date,
+                        'portfolio_value': current_portfolio_value,
+                        'cash': self.cash_balance,
+                        'position_value': current_portfolio_value - self.cash_balance
+                    })
 
                 # Entry logic
                 if self.positions[ticker]['shares'] == 0:  # Not in position for this ticker
@@ -435,6 +938,9 @@ class VectorbtTradingStrategy:
                         if self.first_trade_date is None or current_date < self.first_trade_date:
                             self.first_trade_date = current_date
 
+                        # Update portfolio value after transaction
+                        updated_portfolio_value = self.calculate_portfolio_value(current_date)
+
                         # Log transaction
                         self.transaction_log.append({
                             'date': current_date,
@@ -445,7 +951,7 @@ class VectorbtTradingStrategy:
                             'amount': cost,
                             'fee': fee,
                             'cash_balance': self.cash_balance,
-                            'portfolio_value': current_portfolio_value
+                            'portfolio_value': updated_portfolio_value
                         })
 
                 # Exit logic
@@ -463,6 +969,9 @@ class VectorbtTradingStrategy:
                         self.cash_balance += net_proceeds
                         self.last_trade_date = current_date
 
+                        # Update portfolio value after transaction
+                        updated_portfolio_value = self.calculate_portfolio_value(current_date)
+
                         # Log transaction
                         self.transaction_log.append({
                             'date': current_date,
@@ -473,7 +982,7 @@ class VectorbtTradingStrategy:
                             'amount': proceeds,
                             'fee': fee,
                             'cash_balance': self.cash_balance,
-                            'portfolio_value': self.cash_balance,
+                            'portfolio_value': updated_portfolio_value,
                             'profit_pct': returns * 100
                         })
                         self.positions[ticker] = {'shares': 0, 'entry_price': 0, 'entry_date': None}
@@ -488,6 +997,9 @@ class VectorbtTradingStrategy:
                         self.cash_balance += net_proceeds
                         self.last_trade_date = current_date
 
+                        # Update portfolio value after transaction
+                        updated_portfolio_value = self.calculate_portfolio_value(current_date)
+
                         # Log transaction
                         self.transaction_log.append({
                             'date': current_date,
@@ -498,7 +1010,7 @@ class VectorbtTradingStrategy:
                             'amount': proceeds,
                             'fee': fee,
                             'cash_balance': self.cash_balance,
-                            'portfolio_value': self.cash_balance,
+                            'portfolio_value': updated_portfolio_value,
                             'profit_pct': returns * 100
                         })
                         self.positions[ticker] = {'shares': 0, 'entry_price': 0, 'entry_date': None}
@@ -628,19 +1140,57 @@ class StrategyOptimizer:
 
 # Streamlit App
 def main():
-    st.title("Trading Strategy Optimizer")
-    st.markdown("Optimize and backtest algorithmic trading strategies with multiple stocks")
+    if 'modal_shown' not in st.session_state:
+        st.session_state.modal_shown = False
+
+    @st.dialog("🚀 Quick Start: Trading Strategy Optimizer")
+    def show_welcome_modal():
+        st.write("The Trading Strategy Optimizer turns complex market data into a single trading score, helping traders act with clarity. Before running an optimization, set your **Buy Score Threshold** to control trade entries, define your **Take Profit %** and **Stop Loss %** to manage gains and risks, and choose the **Max Combinations to Test** to balance speed with thoroughness.")
+        
+        st.write("Once you start, the system will scan scenarios and show which settings deliver the best performance for your goals.")
+        
+        if st.button("Get Started", type="primary", use_container_width=True):
+            st.session_state.modal_shown = True
+            st.rerun()
+
+    # Show modal on first load - but mark it as shown immediately when opened
+    if not st.session_state.modal_shown:
+        st.session_state.modal_shown = True  # Mark as shown when opening
+        show_welcome_modal()
+
 
     # Sidebar for user inputs
     with st.sidebar:
-        st.header("Scenario Setup")
+        # Header with icon
+        st.markdown("""
+        <div style="margin-bottom: 24px;">
+            <h1 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">
+                📈 Trading Strategy Optimizer
+            </h1>
+            <p style="font-size: 14px; color: #6b7280; margin: 0;">
+                Optimize and backtest algorithmic trading strategies with multiple stocks
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Scenario Setup Card
+        st.markdown("""
+        <div class="sidebar-card">
+            <h3 class="sidebar-header">📅 Scenario Setup</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Date range inputs
         end_date = st.date_input("End Date", value=datetime.now().date())
         start_date = st.date_input("Start Date", value=(datetime.now() - timedelta(days=365)).date())
         
-        # Multi-ticker input with improved UI
-        st.subheader("Stock Selection")
+        # Stock Selection Card
+        st.markdown("""
+        <div class="sidebar-card">
+            <h3 class="sidebar-header">🏢 Stock Selection</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
         ticker_input = st.text_area(
             "Stock Tickers", 
             value="AAPL, GOOGL, MSFT, AMZN", 
@@ -651,37 +1201,52 @@ def main():
         # Parse and display tickers
         tickers = parse_tickers(ticker_input)
         if tickers:
-            st.success(f"Selected tickers: {', '.join(tickers)}")
-            st.info(f"Total: {len(tickers)} stocks")
+            # Display tickers as styled tags
+            ticker_tags = " ".join([f'<span style="display: inline-block; background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; margin: 2px;">{ticker}</span>' for ticker in tickers])
+            st.markdown(f"""
+            <div style="margin: 8px 0;">
+                <p style="font-size: 12px; color: #059669; font-weight: 500; margin-bottom: 8px;">✓ Selected tickers:</p>
+                <div style="margin-bottom: 8px;">{ticker_tags}</div>
+                <p style="font-size: 12px; color: #6b7280;">Total: {len(tickers)} stocks</p>
+            </div>
+            """, unsafe_allow_html=True)
         else:
             st.error("Please enter at least one valid ticker symbol")
         
-        st.divider()
+        # Strategy Parameters Card
+        st.markdown("""
+        <div class="sidebar-card">
+            <h3 class="sidebar-header">⚙️ Strategy Parameters</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Strategy parameters
-        st.subheader("Strategy Parameters")
         buy_threshold = st.slider("Buy Score Threshold", min_value=0.0, max_value=2.0, value=0.6, step=0.1)
         take_profit_pct = st.slider("Take Profit %", min_value=1, max_value=50, value=10, step=1)
         stop_loss_pct = st.slider("Stop Loss %", min_value=1, max_value=20, value=5, step=1)
         
-        st.divider()
+        # Optimization Settings Card
+        st.markdown("""
+        <div class="sidebar-card">
+            <h3 class="sidebar-header">🎯 Optimization Settings</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Optimization settings
-        st.subheader("Optimization Settings")
         run_optimization = st.checkbox("Run Weight Optimization", value=True)
-        max_combinations = st.slider("Max Combinations to Test", min_value=10, max_value=200, value=50)
+        max_combinations = st.slider("Max Combinations to Test", min_value=1, max_value=200, value=50)
         
-        st.divider()
+        # Analysis Options Card
+        st.markdown("""
+        <div class="sidebar-card">
+            <h3 class="sidebar-header">📊 Analysis Options</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Analysis options
-        st.subheader("Analysis Options")
         show_individual_charts = st.checkbox("Show Individual Stock Charts", value=False)
         show_correlation_matrix = st.checkbox("Show Correlation Matrix", value=True)
         
-        st.divider()
-        
         # Run analysis button
-        run_analysis = st.button("Run Analysis", type="primary", use_container_width=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        run_analysis = st.button("🚀 Run Optimization", type="primary", use_container_width=True)
 
     # Main panel
     if run_analysis and tickers:
@@ -695,7 +1260,7 @@ def main():
             
             # Run optimization if selected
             if run_optimization:
-                st.header("Scenario Optimization Results")
+                
                 optimizer = StrategyOptimizer(analyzer)
                 best_result, all_results = optimizer.optimize_weights(
                     max_combinations=max_combinations,
@@ -716,7 +1281,7 @@ def main():
                     analyzer.scoring_rules['sma_cross']['weight'] = best_weights[4]
                     
                 if run_optimization and 'best_result' in locals() and best_result:
-                    st.subheader("Optimal Weight Distribution")
+                    st.markdown('<h2 class="section-header">⚖️ Optimal Weight Distribution</h2>', unsafe_allow_html=True)
                     
                     # Recreate weights_df here
                     best_weights = best_result['weights']
@@ -734,7 +1299,7 @@ def main():
                     second_half = weights_df.iloc[3:]  # Last 2 indicators
                     
                     with col1:
-                        # Create flash cards for first half
+                        # Create styled cards for first half
                         for i, row in first_half.iterrows():
                             indicator = row['Indicator']
                             weight = row['Weight']
@@ -742,21 +1307,27 @@ def main():
                             
                             st.markdown(f"""
                             <div style="
-                                background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-                                padding: 15px;
-                                border-radius: 10px;
-                                margin-bottom: 10px;
-                                color: white;
-                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                                border-radius: 12px;
+                                padding: 20px;
+                                text-align: center;
+                                margin: 8px;
+                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                                transition: all 0.3s ease;
+                                border: 1px solid #e2e8f0;
+                                min-height: 120px;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
                             ">
-                                <h4 style="margin: 0; color: white; font-size: 16px;">{indicator}</h4>
-                                <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #fbbf24;">{percentage}</p>
-                                <p style="margin: 0; font-size: 12px; color: #e5e7eb;">Weight: {weight:.3f}</p>
+                                <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">{indicator}</div>
+                                <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{percentage}</div>
+                                <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Weight: {weight:.3f}</div>
                             </div>
                             """, unsafe_allow_html=True)
                     
                     with col2:
-                        # Create flash cards for second half
+                        # Create styled cards for second half
                         for i, row in second_half.iterrows():
                             indicator = row['Indicator']
                             weight = row['Weight']
@@ -764,23 +1335,29 @@ def main():
                             
                             st.markdown(f"""
                             <div style="
-                                background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-                                padding: 15px;
-                                border-radius: 10px;
-                                margin-bottom: 10px;
-                                color: white;
-                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                                background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+                                border-radius: 12px;
+                                padding: 20px;
+                                text-align: center;
+                                margin: 8px;
+                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                                transition: all 0.3s ease;
+                                border: 1px solid #d1d5db;
+                                min-height: 120px;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
                             ">
-                                <h4 style="margin: 0; color: white; font-size: 16px;">{indicator}</h4>
-                                <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #fbbf24;">{percentage}</p>
-                                <p style="margin: 0; font-size: 12px; color: #e5e7eb;">Weight: {weight:.3f}</p>
+                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px;">{indicator}</div>
+                                <div style="font-size: 24px; font-weight: 700; color: #1f2937; margin: 4px 0;">{percentage}</div>
+                                <div style="font-size: 12px; color: #6b7280; font-weight: 400;">Weight: {weight:.3f}</div>
                             </div>
                             """, unsafe_allow_html=True)
                    
             # Run final analysis with optimal/default weights
             analyzer.analyze_stocks()
                  # Run strategy backtest
-            st.header("Multi-Ticker Strategy Backtest Results")
+        
             strategy = VectorbtTradingStrategy(
                 analyzer.processed_data,
                 {'buy': buy_threshold},
@@ -795,64 +1372,92 @@ def main():
                 portfolio_df = pd.DataFrame(strategy.portfolio_history)
                 portfolio_df['date'] = pd.to_datetime(portfolio_df['date'])
                 
-                # Aggregate portfolio history by date (remove duplicates)
-                portfolio_agg = portfolio_df.groupby('date').agg({
-                    'portfolio_value': 'first',
-                    'cash': 'first'
-                }).reset_index()
+                # Remove duplicates and sort by date
+                portfolio_df = portfolio_df.drop_duplicates(subset=['date']).sort_values('date')
                 
                 fig_portfolio = go.Figure()
                 fig_portfolio.add_trace(go.Scatter(
-                    x=portfolio_agg['date'], 
-                    y=portfolio_agg['portfolio_value'],
+                    x=portfolio_df['date'], 
+                    y=portfolio_df['portfolio_value'],
                     mode='lines',
                     name='Portfolio Value',
                     line=dict(color='green', width=2)
                 ))
-            # Calculate final metrics
-                initial_value = 100000
-                final_value = strategy.cash_balance + sum(
-                    pos['shares'] * analyzer.processed_data[ticker]['Close'].iloc[-1] 
-                    for ticker, pos in strategy.positions.items() 
-                    if pos['shares'] > 0 and ticker in analyzer.processed_data
-                )
+                
+                # Calculate final metrics using the same method as portfolio history
+                initial_value = strategy.initial_capital
+                if portfolio_df.empty:
+                    final_value = initial_value
+                else:
+                    final_value = portfolio_df['portfolio_value'].iloc[-1]
                 total_return = ((final_value - initial_value) / initial_value) * 100
                 
-                # Core Performance Metrics (First Row)
-                st.subheader("Core Performance Metrics")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Initial Capital", f"${initial_value:,.2f}")
-                with col2:
-                    st.metric("Final Value", f"${final_value:,.2f}")
-                with col3:
-                    st.metric("Total Return", f"{total_return:.1f}%")
-                with col4:
-                    st.metric("Number of Trades", strategy.trade_count)
+                # Core Performance Metrics Card with hover effects
+                st.markdown('<h2 class="section-header">📊 Core Performance Metrics</h2>', unsafe_allow_html=True)
+                
+                st.markdown(f"""
+                <div style="
+                    background: #ffffff;
+                    border-radius: 16px;
+                    padding: 32px;
+                    margin: 20px 0;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                    border: 1px solid #e5e7eb;
+                ">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">${initial_value:,.0f}</div>
+                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Initial Capital</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">${final_value:,.0f}</div>
+                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Final Value</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{total_return:.1f}%</div>
+                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Total Return</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{strategy.trade_count}</div>
+                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Number of Trades</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-                # Advanced Performance Metrics (Second Row)
-                st.subheader("Optimization Results")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    if run_optimization and best_result:
-                        st.metric("Best Total Return", f"{best_result['total_return']:.1f}%")
-                    else:
-                        st.metric("Best Total Return", "Not calculated")
-                with col2:
-                    if run_optimization and best_result:
-                        st.metric("Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
-                    else:
-                        st.metric("Sharpe Ratio", "Not calculated")
-                with col3:
-                    if run_optimization and best_result:
-                        st.metric("Max Drawdown", f"{best_result['max_drawdown']:.1f}%")
-                    else:
-                        st.metric("Max Drawdown", "Not calculated")
-                with col4:
-                    if run_optimization and best_result:
-                        st.metric("Win Rate", f"{best_result['win_rate']:.1f}%")
-                    else:
-                        st.metric("Win Rate", "Not calculated")
+                # Advanced Performance Metrics Card with hover effects
+                if run_optimization and best_result:
+                    st.markdown('<h2 class="section-header">🎯 Advanced Performance Metrics</h2>', unsafe_allow_html=True)
+                    
+                    st.markdown(f"""
+                    <div style="
+                        background: #ffffff;
+                        border-radius: 16px;
+                        padding: 32px;
+                        margin: 20px 0;
+                        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                        border: 1px solid #e5e7eb;
+                    ">
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['total_return']:.1f}%</div>
+                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Best Total Return</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['sharpe_ratio']:.2f}</div>
+                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Sharpe Ratio</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['max_drawdown']:.1f}%</div>
+                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Max Drawdown</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['win_rate']:.1f}%</div>
+                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Win Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
             
             if not analyzer.processed_data:
@@ -860,7 +1465,7 @@ def main():
                 return
             
             # Display portfolio overview
-            st.header("Portfolio Overview")
+            st.markdown('<h2 class="section-header">📈 Portfolio Overview</h2>', unsafe_allow_html=True)
             
             # Calculate portfolio metrics
             portfolio_metrics = []
@@ -874,19 +1479,22 @@ def main():
                     
                     portfolio_metrics.append({
                         'Ticker': ticker,
-                        'Current Price': f"${last_price:.2f}",
+                        'Current Price': f"${last_price:,.2f}",
                         'Buy & Hold Return': f"{buy_hold_return:.2f}%",
                         'Current Score': f"{current_score:.2f}",
-                        'Data Points': len(data)
+                        'Data Points': f"{len(data):,}"
                     })
             
             if portfolio_metrics:
                 portfolio_df = pd.DataFrame(portfolio_metrics)
+                
+                # Portfolio Overview Card with hover effects
+            
                 st.dataframe(portfolio_df, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
                 # Bar chart representation of optimal weights
                 if run_optimization and best_result:
-                    st.subheader("Weight Distribution Chart")
                     weights_df = pd.DataFrame({
                         'Indicator': ['Predicted Return', 'Confidence Interval', 'RSI', 'Bollinger Bands', 'SMA Cross'],
                         'Weight': best_weights,
@@ -911,12 +1519,15 @@ def main():
                         texttemplate='%{y:.2f}', 
                         textposition='outside'
                     )
+                    
+                    # Weight Distribution Chart Card with hover effects
+                    st.markdown('<h2 class="section-header">📊 Weight Distribution</h2>', unsafe_allow_html=True)
+                    
                     st.plotly_chart(fig_bar, use_container_width=True)
                 
                 # Show correlation matrix if requested
+                
                 if show_correlation_matrix and len(analyzer.tickers) > 1:
-                    st.subheader("Stock Price Correlation Matrix")
-                    
                     # Create correlation matrix
                     price_data = {}
                     for ticker in analyzer.tickers:
@@ -926,15 +1537,33 @@ def main():
                     if len(price_data) > 1:
                         corr_df = pd.DataFrame(price_data).corr()
                         
-                        fig_corr = px.imshow(
-                            corr_df,
-                            text_auto=True,
-                            aspect="auto",
-                            title="Stock Price Correlation Matrix",
-                            color_continuous_scale="RdBu_r"
+                        fig_corr = go.Figure(data=go.Heatmap(
+                            z=corr_df.values,
+                            x=corr_df.columns,
+                            y=corr_df.columns,
+                            colorscale='RdBu',
+                            zmid=0,
+                            text=corr_df.round(2).values,
+                            texttemplate="%{text}",
+                            textfont={"size": 12},
+                            hoverongaps=False
+                        ))
+                        
+                        fig_corr.update_layout(
+                            title='Stock Price Correlation Matrix',
+                            height=450,
+                            margin=dict(l=20, r=20, t=40, b=20),
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            xaxis=dict(side="bottom"),
+                            yaxis=dict(autorange="reversed")
                         )
-                        st.plotly_chart(fig_corr, use_container_width=True)
-
+                    
+                        with st.container():
+                
+                            st.plotly_chart(fig_corr, use_container_width=True, config={'displayModeBar': False})
+                            
+                            st.markdown("</div>", unsafe_allow_html=True)
             
                 # Add buy/sell markers for all tickers
                 transactions_df = pd.DataFrame(strategy.transaction_log)
@@ -969,16 +1598,33 @@ def main():
                     xaxis_title="Date",
                     yaxis_title="Portfolio Value ($)",
                     height=500,
-                    hovermode='x unified'
+                    hovermode='x unified',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
                 )
+                
+                # Portfolio Performance Chart Card with hover effects
+                st.markdown('<h2 class="section-header">📈 Portfolio Performance</h2>', unsafe_allow_html=True)
+                
                 st.plotly_chart(fig_portfolio, use_container_width=True)
                 
                 
                 # Display transaction log
-                st.subheader("Transaction Log")
                 if strategy.transaction_log:
-                    df_transactions = pd.DataFrame(strategy.transaction_log)
-                    df_transactions['date'] = df_transactions['date'].dt.strftime('%Y-%m-%d')
+                    # Create a copy for calculations (keep numeric values)
+                    df_transactions_calc = pd.DataFrame(strategy.transaction_log)
+                    df_transactions_calc['date'] = df_transactions_calc['date'].dt.strftime('%Y-%m-%d')
+                    
+                    # Create a copy for display (format as strings)
+                    df_transactions_display = df_transactions_calc.copy()
+                    df_transactions_display['amount'] = df_transactions_display['amount'].apply(lambda x: f"${x:,.0f}")
+                    df_transactions_display['fee'] = df_transactions_display['fee'].apply(lambda x: f"${x:,.0f}")
+                    df_transactions_display['cash_balance'] = df_transactions_display['cash_balance'].apply(lambda x: f"${x:,.0f}")
+                    df_transactions_display['portfolio_value'] = df_transactions_display['portfolio_value'].apply(lambda x: f"${x:,.0f}")
+                    
+                    # Format profit percentage if it exists
+                    if 'profit_pct' in df_transactions_display.columns:
+                        df_transactions_display['profit_pct'] = df_transactions_display['profit_pct'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else "")
                     
                     # Add color coding for transaction types
                     def color_transactions(val):
@@ -988,12 +1634,15 @@ def main():
                             return 'background-color: lightcoral'
                         return ''
                     
-                    styled_df = df_transactions.style.applymap(color_transactions, subset=['type'])
+                    styled_df = df_transactions_display.style.applymap(color_transactions, subset=['type'])
+                    
+                    # Transaction Log Card with hover effects
+                    st.markdown('<h2 class="section-header">📋 Transaction Log</h2>', unsafe_allow_html=True)
                     st.dataframe(styled_df, use_container_width=True)
                     
-                    # Transaction summary by ticker
-                    st.subheader("Transaction Summary by Ticker")
-                    ticker_summary = df_transactions.groupby('ticker').agg({
+                
+                    # Transaction summary by ticker (use numeric values for calculations)
+                    ticker_summary = df_transactions_calc.groupby('ticker').agg({
                         'type': 'count',
                         'amount': 'sum',
                         'fee': 'sum'
@@ -1001,8 +1650,8 @@ def main():
                     
                     # Calculate profit/loss by ticker
                     ticker_pl = {}
-                    for ticker in df_transactions['ticker'].unique():
-                        ticker_trades = df_transactions[df_transactions['ticker'] == ticker]
+                    for ticker in df_transactions_calc['ticker'].unique():
+                        ticker_trades = df_transactions_calc[df_transactions_calc['ticker'] == ticker]
                         buys = ticker_trades[ticker_trades['type'] == 'BUY']['amount'].sum()
                         sells = ticker_trades[ticker_trades['type'].str.startswith('SELL')]['amount'].sum()
                         fees = ticker_trades['fee'].sum()
@@ -1012,13 +1661,21 @@ def main():
                     ticker_summary['profit_loss'] = ticker_summary.index.map(ticker_pl)
                     ticker_summary['profit_loss_pct'] = (ticker_summary['profit_loss'] / ticker_summary['amount']) * 100
                     
+                    # Format dollar columns for better readability
+                    ticker_summary['amount'] = ticker_summary['amount'].apply(lambda x: f"${x:,.0f}")
+                    ticker_summary['fee'] = ticker_summary['fee'].apply(lambda x: f"${x:,.0f}")
+                    ticker_summary['profit_loss'] = ticker_summary['profit_loss'].apply(lambda x: f"${x:,.0f}")
+                    ticker_summary['profit_loss_pct'] = ticker_summary['profit_loss_pct'].apply(lambda x: f"{x:.1f}%")
+                    
+                    # Transaction Summary Card with hover effects
+                    st.markdown('<h2 class="section-header">📊 Transaction Summary by Ticker</h2>', unsafe_allow_html=True)
                     st.dataframe(ticker_summary, use_container_width=True)
                 else:
                     st.info("No transactions were executed with current parameters")
                 
                 # Show individual stock charts if requested
                 if show_individual_charts:
-                    st.header("Individual Stock Analysis")
+                    st.markdown('<h2 class="section-header">📊 Individual Stock Analysis</h2>', unsafe_allow_html=True)
                     
                     # Create tabs for each stock
                     if len(analyzer.tickers) > 1:
@@ -1049,9 +1706,12 @@ def display_individual_stock_chart(data, ticker, buy_threshold):
     buy_hold_return = ((last_price - first_price) / first_price) * 100
     current_score = data['Total_Score'].iloc[-1] if not data['Total_Score'].empty else 0
     
+    # Individual Stock Metrics Card with hover effects
+    st.markdown('<h3 class="section-header">📊 Key Metrics</h3>', unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Current Price", f"${last_price:.2f}")
+        st.metric("Current Price", f"${last_price:,.2f}")
     with col2:
         st.metric("Buy & Hold Return", f"{buy_hold_return:.2f}%")
     with col3:
@@ -1084,8 +1744,19 @@ def display_individual_stock_chart(data, ticker, buy_threshold):
     fig.add_trace(go.Scatter(x=data.index, y=data['Total_Score'], name='Total Score', line=dict(color='green')), row=3, col=1)
     fig.add_hline(y=buy_threshold, line_dash="dash", line_color="red", row=3, col=1, annotation_text="Buy Threshold")
     
-    fig.update_layout(height=800, title_text=f"Technical Analysis for {ticker}", showlegend=True)
+    fig.update_layout(
+        height=800, 
+        title_text=f"Technical Analysis for {ticker}", 
+        showlegend=True,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    # Individual Stock Chart Card with hover effects
+    st.markdown('<h3 class="section-header">📈 Technical Analysis</h3>', unsafe_allow_html=True)
+    
     st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
     main()
+
