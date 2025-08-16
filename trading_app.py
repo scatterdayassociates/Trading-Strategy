@@ -1174,7 +1174,7 @@ class StrategyOptimizer:
 
         return valid_combinations
 
-    def optimize_weights(self, max_combinations=50, take_profit_pct=10, stop_loss_pct=5):
+    def optimize_weights(self, max_combinations=50, take_profit_pct=10, stop_loss_pct=5, buy_threshold=0.6):
         """Test different weight combinations that sum to 1"""
         weight_combinations = self.generate_valid_weight_combinations(step=0.2)
 
@@ -1201,39 +1201,48 @@ class StrategyOptimizer:
             self.analyzer.scoring_rules['bb_position']['weight'] = weights[3]
             self.analyzer.scoring_rules['sma_cross']['weight'] = weights[4]
 
-            # Re-analyze and backtest
+            # Re-analyze and backtest using the same strategy as final analysis
             self.analyzer.analyze_stocks()
             strategy = VectorbtTradingStrategy(
                 self.analyzer.processed_data,
-                {'buy': 0.6},
+                {'buy': buy_threshold},  # Use the user's buy threshold
                 self.analyzer.scoring_rules,
                 take_profit_pct,
                 stop_loss_pct
             )
             price_data, entries, exits = strategy.generate_vbt_signals()
 
-            if not price_data.empty:
+            if not price_data.empty and strategy.transaction_log:
                 try:
-                    portfolio = vbt.Portfolio.from_signals(
-                        close=price_data,
-                        entries=entries,
-                        exits=exits,
-                        size=1,
-                        size_type='amount',
-                        init_cash=100000,
-                        fees=0.001,
-                        direction='longonly',
-                        freq='d'
-                    )
-
-                    stats = portfolio.stats()
+                    # Use the same calculation method as the final analysis
+                    final_value = strategy.transaction_log[-1]['portfolio_value']
+                    initial_value = strategy.initial_capital
+                    total_return = ((final_value - initial_value) / initial_value) * 100
+                    
+                    # Calculate other metrics from transaction log
+                    sell_transactions = [t for t in strategy.transaction_log if t['type'].startswith('SELL')]
+                    total_trades = len(strategy.transaction_log)
+                    winning_trades = len([t for t in sell_transactions if 'profit_pct' in t and t['profit_pct'] > 0])
+                    win_rate = (winning_trades / len(sell_transactions) * 100) if sell_transactions else 0
+                    
+                    # Calculate max drawdown from portfolio history
+                    portfolio_values = [t['portfolio_value'] for t in strategy.transaction_log]
+                    max_drawdown = 0
+                    peak = portfolio_values[0]
+                    for value in portfolio_values:
+                        if value > peak:
+                            peak = value
+                        drawdown = (peak - value) / peak * 100
+                        if drawdown > max_drawdown:
+                            max_drawdown = drawdown
+                    
                     result = {
                         'weights': weights,
-                        'total_return': stats.loc['Total Return [%]'],
-                        'sharpe_ratio': stats.loc['Sharpe Ratio'],
-                        'max_drawdown': stats.loc['Max Drawdown [%]'],
-                        'win_rate': stats.loc['Win Rate [%]'],
-                        'stats': stats
+                        'total_return': total_return,
+                        'sharpe_ratio': total_return / max_drawdown if max_drawdown > 0 else total_return,  # Simplified Sharpe
+                        'max_drawdown': max_drawdown,
+                        'win_rate': win_rate,
+                        'final_value': final_value
                     }
                     self.results.append(result)
 
@@ -1359,7 +1368,8 @@ def main():
                 best_result, all_results = optimizer.optimize_weights(
                     max_combinations=max_combinations,
                     take_profit_pct=take_profit_pct,
-                    stop_loss_pct=stop_loss_pct
+                    stop_loss_pct=stop_loss_pct,
+                    buy_threshold=buy_threshold
                 )
                 
                 if best_result:
@@ -1418,8 +1428,12 @@ def main():
                             """, unsafe_allow_html=True)
                    
             # Run final analysis with optimal/default weights
-            analyzer.analyze_stocks()
-                 # Run strategy backtest
+            if run_optimization and best_result:
+                # Re-analyze with optimal weights
+                analyzer.analyze_stocks()
+            else:
+                # Use default weights
+                analyzer.analyze_stocks()
         
             strategy = VectorbtTradingStrategy(
                 analyzer.processed_data,
@@ -1466,7 +1480,7 @@ def main():
                 ))
                 
                 # Core Performance Metrics Card with hover effects
-                st.markdown('<h2 class="section-header">Core Performance Metrics</h2>', unsafe_allow_html=True)
+                st.markdown('<h2 class="section-header">Final Analysis Results (With Optimal Weights)</h2>', unsafe_allow_html=True)
                 
                 col1, col2, col3, col4 = st.columns(4)
                 
@@ -1849,7 +1863,7 @@ def main():
                     }, index=['PORTFOLIO TOTAL'])
                     
                     # Combine ticker summary with portfolio total
-                    ticker_summary_with_total = pd.concat([ticker_summary, summary_row])
+                    ticker_summary_with_total = pd.concat([ticker_summary])
                     
                     # Transaction Summary Card with hover effects
                     st.markdown('<h2 class="section-header">Transaction Summary by Ticker</h2>', unsafe_allow_html=True)
