@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore")
 # Set page config
 st.set_page_config(
     page_title="Trading Strategy Optimizer",
-    page_icon="📈",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -51,21 +51,12 @@ st.markdown("""
     
     /* Enhanced Card Styles with Gradients */
     .metric-card {
-        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        border-radius: 16px;
-        padding: 32px 24px;
-        text-align: center;
-        margin: 12px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        transition: all 0.3s ease;
-        border: none;
-        position: relative;
-        min-height: 270px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        color: white;
-    }
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-left: 4px solid #10b981;
+        }
     
     .metric-card:hover {
         transform: translateY(-4px);
@@ -434,7 +425,7 @@ st.markdown("""
     
     /* Enhanced Sidebar Styling */
     .css-1d391kg {
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        background: #f8fafc;
         padding: 24px 20px;
         border-right: 1px solid #e2e8f0;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
@@ -442,12 +433,10 @@ st.markdown("""
     
     /* Sidebar Section Headers */
     .sidebar-header {
-        font-size: 18px;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #e5e7eb;
+        font-size: 16px;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 12px;
     }
     
     /* Sidebar Cards */
@@ -462,21 +451,49 @@ st.markdown("""
     
     /* Button Enhancements */
     .stButton > button {
-        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
+        background: #3b82f6 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px;
         padding: 12px 24px;
         font-weight: 600;
         font-size: 15px;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
+        background: #2563eb !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
     }
+    
+    /* Override Streamlit's primary button styling */
+    .stButton > button[data-baseweb="button"] {
+        background: #3b82f6 !important;
+        color: white !important;
+    }
+    
+    /* Force blue color for all button states */
+    button[data-testid="baseButton-primary"] {
+        background: #3b82f6 !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    /* Additional Streamlit button overrides */
+    [data-testid="baseButton-primary"] {
+        background: #3b82f6 !important;
+        color: white !important;
+    }
+    
+    /* Override any Streamlit primary button */
+    .stButton > button[type="primary"] {
+        background: #3b82f6 !important;
+        color: white !important;
+    }
+    
+
     
     /* Spacing improvements */
     .element-container {
@@ -490,23 +507,12 @@ st.markdown("""
     
     /* Section Headers */
     .section-header {
-        font-size: 24px;
+        font-size: 20px;
         font-weight: 600;
         color: #1f2937;
         margin: 32px 0 20px 0;
         padding-bottom: 12px;
-        border-bottom: 3px solid #4f46e5;
-        position: relative;
-    }
-    
-    .section-header::before {
-        content: '';
-        position: absolute;
-        bottom: -3px;
-        left: 0;
-        width: 60px;
-        height: 3px;
-        background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+        border-bottom: 1px solid #e5e7eb;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -895,10 +901,117 @@ class VectorbtTradingStrategy:
                 current_date = data_df.index[i]
                 current_price = close_prices.iloc[i]
 
-                # Calculate current portfolio value
+                # Exit logic first (check if we should sell existing positions)
+                if self.positions[ticker]['shares'] > 0:  # In position for this ticker
+                    entry_price = self.positions[ticker]['entry_price']
+                    shares = self.positions[ticker]['shares']
+                    returns = (current_price - entry_price) / entry_price
+
+                    # Take profit
+                    if returns >= self.take_profit_pct / 100:
+                        exits.iloc[i] = True
+                        proceeds = shares * current_price
+                        fee = proceeds * self.fee_rate
+                        net_proceeds = proceeds - fee
+                        self.cash_balance += net_proceeds
+                        self.last_trade_date = current_date
+
+                        # Update portfolio value after transaction
+                        updated_portfolio_value = self.calculate_portfolio_value(current_date)
+
+                        # Log transaction
+                        self.transaction_log.append({
+                            'date': current_date,
+                            'ticker': ticker,
+                            'type': 'SELL-TP',
+                            'price': current_price,
+                            'shares': shares,
+                            'amount': proceeds,
+                            'fee': fee,
+                            'cash_balance': self.cash_balance,
+                            'portfolio_value': updated_portfolio_value,
+                            'profit_pct': returns * 100
+                        })
+                        self.positions[ticker] = {'shares': 0, 'entry_price': 0, 'entry_date': None}
+                        self.trade_count += 1
+
+                    # Stop loss
+                    elif returns <= -self.stop_loss_pct / 100:
+                        exits.iloc[i] = True
+                        proceeds = shares * current_price
+                        fee = proceeds * self.fee_rate
+                        net_proceeds = proceeds - fee
+                        self.cash_balance += net_proceeds
+                        self.last_trade_date = current_date
+
+                        # Update portfolio value after transaction
+                        updated_portfolio_value = self.calculate_portfolio_value(current_date)
+
+                        # Log transaction
+                        self.transaction_log.append({
+                            'date': current_date,
+                            'ticker': ticker,
+                            'type': 'SELL-SL',
+                            'price': current_price,
+                            'shares': shares,
+                            'amount': proceeds,
+                            'fee': fee,
+                            'cash_balance': self.cash_balance,
+                            'portfolio_value': updated_portfolio_value,
+                            'profit_pct': returns * 100
+                        })
+                        self.positions[ticker] = {'shares': 0, 'entry_price': 0, 'entry_date': None}
+                        self.trade_count += 1
+
+                # Entry logic (check if we should buy new positions)
+                if self.positions[ticker]['shares'] == 0:  # Not in position for this ticker
+                    score = data_df['Total_Score'].iloc[i]
+                    if score >= self.decision_thresholds['buy']:
+                        # Calculate position size (use available cash divided by number of tickers)
+                        available_cash = self.cash_balance / len(self.processed_data)
+                        shares = int(available_cash / current_price)
+                        if shares == 0:  # Not enough cash
+                            continue
+
+                        cost = shares * current_price
+                        fee = cost * self.fee_rate
+                        total_cost = cost + fee
+
+                        if total_cost > self.cash_balance:
+                            continue
+
+                        # Execute buy
+                        entries.iloc[i] = True
+                        self.positions[ticker] = {
+                            'shares': shares,
+                            'entry_price': current_price,
+                            'entry_date': current_date
+                        }
+                        self.cash_balance -= total_cost
+                        self.trade_count += 1
+
+                        # Update first trade date if needed
+                        if self.first_trade_date is None or current_date < self.first_trade_date:
+                            self.first_trade_date = current_date
+
+                        # Update portfolio value after transaction
+                        updated_portfolio_value = self.calculate_portfolio_value(current_date)
+
+                        # Log transaction
+                        self.transaction_log.append({
+                            'date': current_date,
+                            'ticker': ticker,
+                            'type': 'BUY',
+                            'price': current_price,
+                            'shares': shares,
+                            'amount': cost,
+                            'fee': fee,
+                            'cash_balance': self.cash_balance,
+                            'portfolio_value': updated_portfolio_value
+                        })
+
+                # Update portfolio history after all transactions for this date
                 current_portfolio_value = self.calculate_portfolio_value(current_date)
-                
-                # Only add to portfolio history if it's a new date or value changed
                 if not self.portfolio_history or self.portfolio_history[-1]['date'] != current_date:
                     self.portfolio_history.append({
                         'date': current_date,
@@ -1143,7 +1256,7 @@ def main():
     if 'modal_shown' not in st.session_state:
         st.session_state.modal_shown = False
 
-    @st.dialog("🚀 Quick Start: Trading Strategy Optimizer")
+    @st.dialog("Quick Start: Trading Strategy Optimizer")
     def show_welcome_modal():
         st.write("The Trading Strategy Optimizer turns complex market data into a single trading score, helping traders act with clarity. Before running an optimization, set your **Buy Score Threshold** to control trade entries, define your **Take Profit %** and **Stop Loss %** to manage gains and risks, and choose the **Max Combinations to Test** to balance speed with thoroughness.")
         
@@ -1165,7 +1278,7 @@ def main():
         st.markdown("""
         <div style="margin-bottom: 24px;">
             <h1 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">
-                📈 Trading Strategy Optimizer
+                Trading Strategy Optimizer
             </h1>
             <p style="font-size: 14px; color: #6b7280; margin: 0;">
                 Optimize and backtest algorithmic trading strategies with multiple stocks
@@ -1173,23 +1286,15 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Scenario Setup Card
-        st.markdown("""
-        <div class="sidebar-card">
-            <h3 class="sidebar-header">📅 Scenario Setup</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # Scenario Setup
+        st.markdown('<h3 class="sidebar-header">Scenario Setup</h3>', unsafe_allow_html=True)
         
         # Date range inputs
         end_date = st.date_input("End Date", value=datetime.now().date())
         start_date = st.date_input("Start Date", value=(datetime.now() - timedelta(days=365)).date())
         
-        # Stock Selection Card
-        st.markdown("""
-        <div class="sidebar-card">
-            <h3 class="sidebar-header">🏢 Stock Selection</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # Stock Selection
+        st.markdown('<h3 class="sidebar-header">Stock Selection</h3>', unsafe_allow_html=True)
         
         ticker_input = st.text_area(
             "Stock Tickers", 
@@ -1202,10 +1307,10 @@ def main():
         tickers = parse_tickers(ticker_input)
         if tickers:
             # Display tickers as styled tags
-            ticker_tags = " ".join([f'<span style="display: inline-block; background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; margin: 2px;">{ticker}</span>' for ticker in tickers])
+            ticker_tags = " ".join([f'<span style="display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: 500; margin: 2px; border: 1px solid #93c5fd;">{ticker}</span>' for ticker in tickers])
             st.markdown(f"""
             <div style="margin: 8px 0;">
-                <p style="font-size: 12px; color: #059669; font-weight: 500; margin-bottom: 8px;">✓ Selected tickers:</p>
+                <p style="font-size: 12px; color: #1e40af; font-weight: 500; margin-bottom: 8px;">✓ Selected tickers:</p>
                 <div style="margin-bottom: 8px;">{ticker_tags}</div>
                 <p style="font-size: 12px; color: #6b7280;">Total: {len(tickers)} stocks</p>
             </div>
@@ -1213,40 +1318,29 @@ def main():
         else:
             st.error("Please enter at least one valid ticker symbol")
         
-        # Strategy Parameters Card
-        st.markdown("""
-        <div class="sidebar-card">
-            <h3 class="sidebar-header">⚙️ Strategy Parameters</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # Strategy Parameters
+        st.markdown('<h3 class="sidebar-header">Strategy Parameters</h3>', unsafe_allow_html=True)
         
         buy_threshold = st.slider("Buy Score Threshold", min_value=0.0, max_value=2.0, value=0.6, step=0.1)
         take_profit_pct = st.slider("Take Profit %", min_value=1, max_value=50, value=10, step=1)
         stop_loss_pct = st.slider("Stop Loss %", min_value=1, max_value=20, value=5, step=1)
         
-        # Optimization Settings Card
-        st.markdown("""
-        <div class="sidebar-card">
-            <h3 class="sidebar-header">🎯 Optimization Settings</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # Optimization Settings
+        st.markdown('<h3 class="sidebar-header">Optimization Settings</h3>', unsafe_allow_html=True)
         
         run_optimization = st.checkbox("Run Weight Optimization", value=True)
         max_combinations = st.slider("Max Combinations to Test", min_value=1, max_value=200, value=50)
         
-        # Analysis Options Card
-        st.markdown("""
-        <div class="sidebar-card">
-            <h3 class="sidebar-header">📊 Analysis Options</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # Analysis Options
+        st.markdown('<h3 class="sidebar-header">Analysis Options</h3>', unsafe_allow_html=True)
         
         show_individual_charts = st.checkbox("Show Individual Stock Charts", value=False)
         show_correlation_matrix = st.checkbox("Show Correlation Matrix", value=True)
         
         # Run analysis button
         st.markdown("<br>", unsafe_allow_html=True)
-        run_analysis = st.button("Run Optimization", type="primary", use_container_width=True)
+        run_analysis =st.button("Run Optimization", type="primary", use_container_width=True)
+       
 
     # Main panel
     if run_analysis and tickers:
@@ -1281,7 +1375,7 @@ def main():
                     analyzer.scoring_rules['sma_cross']['weight'] = best_weights[4]
                     
                 if run_optimization and 'best_result' in locals() and best_result:
-                    st.markdown('<h2 class="section-header">⚖️ Optimal Weight Distribution</h2>', unsafe_allow_html=True)
+                    st.markdown('<h2 class="section-header">Trading Signal Weighting Distribution</h2>', unsafe_allow_html=True)
                     
                     # Recreate weights_df here
                     best_weights = best_result['weights']
@@ -1291,23 +1385,19 @@ def main():
                         'Percentage': [f"{w*100:.1f}%" for w in best_weights]
                     })
                     
-                    # Cards in two columns
-                    col1, col2 = st.columns([1, 1])
+                    # Cards in one row (5 columns)
+                    cols = st.columns(5)
                     
-                    # Split the weights_df into two groups
-                    first_half = weights_df.iloc[:3]  # First 3 indicators
-                    second_half = weights_df.iloc[3:]  # Last 2 indicators
-                    
-                    with col1:
-                        # Create styled cards for first half
-                        for i, row in first_half.iterrows():
-                            indicator = row['Indicator']
-                            weight = row['Weight']
-                            percentage = row['Percentage']
-                            
+                    # Create styled cards for all indicators in one row
+                    for i, row in weights_df.iterrows():
+                        indicator = row['Indicator']
+                        weight = row['Weight']
+                        percentage = row['Percentage']
+                        
+                        with cols[i]:
                             st.markdown(f"""
                             <div style="
-                                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                                background: white;
                                 border-radius: 12px;
                                 padding: 20px;
                                 text-align: center;
@@ -1315,6 +1405,7 @@ def main():
                                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
                                 transition: all 0.3s ease;
                                 border: 1px solid #e2e8f0;
+                                border-left: 4px solid #10b981;
                                 min-height: 120px;
                                 display: flex;
                                 flex-direction: column;
@@ -1323,34 +1414,6 @@ def main():
                                 <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">{indicator}</div>
                                 <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{percentage}</div>
                                 <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Weight: {weight:.3f}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    with col2:
-                        # Create styled cards for second half
-                        for i, row in second_half.iterrows():
-                            indicator = row['Indicator']
-                            weight = row['Weight']
-                            percentage = row['Percentage']
-                            
-                            st.markdown(f"""
-                            <div style="
-                                background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
-                                border-radius: 12px;
-                                padding: 20px;
-                                text-align: center;
-                                margin: 8px;
-                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                                transition: all 0.3s ease;
-                                border: 1px solid #d1d5db;
-                                min-height: 120px;
-                                display: flex;
-                                flex-direction: column;
-                                justify-content: center;
-                            ">
-                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px;">{indicator}</div>
-                                <div style="font-size: 24px; font-weight: 700; color: #1f2937; margin: 4px 0;">{percentage}</div>
-                                <div style="font-size: 12px; color: #6b7280; font-weight: 400;">Weight: {weight:.3f}</div>
                             </div>
                             """, unsafe_allow_html=True)
                    
@@ -1367,13 +1430,31 @@ def main():
             )
             price_data, entries, exits = strategy.generate_vbt_signals()
             
+            # Initialize portfolio_df and other variables
+            portfolio_df = None
+            fig_portfolio = None
+            initial_value = strategy.initial_capital
+            final_value = initial_value
+            total_return = 0
+            
             if not price_data.empty and strategy.transaction_log:
-                # Create portfolio performance chart
-                portfolio_df = pd.DataFrame(strategy.portfolio_history)
-                portfolio_df['date'] = pd.to_datetime(portfolio_df['date'])
+                # Get the final portfolio value from the last transaction (single source of truth)
+                final_value = strategy.transaction_log[-1]['portfolio_value']
+                total_return = ((final_value - initial_value) / initial_value) * 100
                 
-                # Remove duplicates and sort by date
-                portfolio_df = portfolio_df.drop_duplicates(subset=['date']).sort_values('date')
+                # Create portfolio performance chart using transaction log data for consistency
+                transaction_df = pd.DataFrame(strategy.transaction_log)
+                transaction_df['date'] = pd.to_datetime(transaction_df['date'])
+                
+                # Create portfolio performance data from transaction log - ensure it includes the final value
+                portfolio_df = transaction_df[['date', 'portfolio_value']].copy()
+                
+                # Keep only the last transaction per date to avoid duplicates, but ensure final value is included
+                portfolio_df = portfolio_df.groupby('date').last().reset_index().sort_values('date')
+                
+                # Ensure the final value matches exactly
+                if not portfolio_df.empty:
+                    portfolio_df.loc[portfolio_df.index[-1], 'portfolio_value'] = final_value
                 
                 fig_portfolio = go.Figure()
                 fig_portfolio.add_trace(go.Scatter(
@@ -1384,88 +1465,241 @@ def main():
                     line=dict(color='green', width=2)
                 ))
                 
-                # Calculate final metrics using the same method as portfolio history
-                initial_value = strategy.initial_capital
-                if portfolio_df.empty:
-                    final_value = initial_value
-                else:
-                    final_value = portfolio_df['portfolio_value'].iloc[-1]
-                total_return = ((final_value - initial_value) / initial_value) * 100
-                
                 # Core Performance Metrics Card with hover effects
-                st.markdown('<h2 class="section-header">📊 Core Performance Metrics</h2>', unsafe_allow_html=True)
+                st.markdown('<h2 class="section-header">Core Performance Metrics</h2>', unsafe_allow_html=True)
                 
-                st.markdown(f"""
-                <div style="
-                    background: #ffffff;
-                    border-radius: 16px;
-                    padding: 32px;
-                    margin: 20px 0;
-                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-                    border: 1px solid #e5e7eb;
-                ">
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">${initial_value:,.0f}</div>
-                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Initial Capital</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">${final_value:,.0f}</div>
-                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Final Value</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{total_return:.1f}%</div>
-                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Total Return</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{strategy.trade_count}</div>
-                            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Number of Trades</div>
-                        </div>
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div style="
+                        background: white;
+                        border-radius: 12px;
+                        padding: 20px;
+                        text-align: center;
+                        margin: 8px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                        transition: all 0.3s ease;
+                        border: 1px solid #e2e8f0;
+                        border-left: 4px solid #3b82f6;
+                        min-height: 120px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                    ">
+                        <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Initial Capital</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">${initial_value:,.0f}</div>
+                        <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Starting Value</div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div style="
+                        background: white;
+                        border-radius: 12px;
+                        padding: 20px;
+                        text-align: center;
+                        margin: 8px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                        transition: all 0.3s ease;
+                        border: 1px solid #e2e8f0;
+                        border-left: 4px solid #3b82f6;
+                        min-height: 120px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                    ">
+                        <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Final Value</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">${final_value:,.0f}</div>
+                        <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Current Value</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div style="
+                        background: white;
+                        border-radius: 12px;
+                        padding: 20px;
+                        text-align: center;
+                        margin: 8px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                        transition: all 0.3s ease;
+                        border: 1px solid #e2e8f0;
+                        border-left: 4px solid #3b82f6;
+                        min-height: 120px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                    ">
+                        <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Total Return</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{total_return:.1f}%</div>
+                        <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Portfolio Performance</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div style="
+                        background: white;
+                        border-radius: 12px;
+                        padding: 20px;
+                        text-align: center;
+                        margin: 8px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                        transition: all 0.3s ease;
+                        border: 1px solid #e2e8f0;
+                        border-left: 4px solid #3b82f6;
+                        min-height: 120px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                    ">
+                        <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Number of Trades</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{strategy.trade_count}</div>
+                        <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Total Trades</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 # Advanced Performance Metrics Card with hover effects
                 if run_optimization and best_result:
-                    st.markdown('<h2 class="section-header">🎯 Advanced Performance Metrics</h2>', unsafe_allow_html=True)
+                    st.markdown('<h2 class="section-header">Advanced Performance Metrics</h2>', unsafe_allow_html=True)
                     
-                    st.markdown(f"""
-                    <div style="
-                        background: #ffffff;
-                        border-radius: 16px;
-                        padding: 32px;
-                        margin: 20px 0;
-                        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-                        border: 1px solid #e5e7eb;
-                    ">
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['total_return']:.1f}%</div>
-                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Best Total Return</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['sharpe_ratio']:.2f}</div>
-                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Sharpe Ratio</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['max_drawdown']:.1f}%</div>
-                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Max Drawdown</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{best_result['win_rate']:.1f}%</div>
-                                <div style="font-size: 14px; color: #6b7280; font-weight: 500;">Win Rate</div>
-                            </div>
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.markdown(f"""
+                        <div style="
+                            background: white;
+                            border-radius: 12px;
+                            padding: 20px;
+                            text-align: center;
+                            margin: 8px;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                            transition: all 0.3s ease;
+                            border: 1px solid #e2e8f0;
+                            border-left: 4px solid #10b981;
+                            min-height: 120px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                        ">
+                            <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Best Total Return</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{best_result['total_return']:.1f}%</div>
+                            <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Optimized Performance</div>
                         </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.markdown(f"""
+                        <div style="
+                            background: white;
+                            border-radius: 12px;
+                            padding: 20px;
+                            text-align: center;
+                            margin: 8px;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                            transition: all 0.3s ease;
+                            border: 1px solid #e2e8f0;
+                            border-left: 4px solid #3b82f6;
+                            min-height: 120px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                        ">
+                            <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Sharpe Ratio</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{best_result['sharpe_ratio']:.2f}</div>
+                            <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Risk-Adjusted Return</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col3:
+                        st.markdown(f"""
+                        <div style="
+                            background: white;
+                            border-radius: 12px;
+                            padding: 20px;
+                            text-align: center;
+                            margin: 8px;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                            transition: all 0.3s ease;
+                            border: 1px solid #e2e8f0;
+                            border-left: 4px solid #10b981;
+                            min-height: 120px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                        ">
+                            <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Max Drawdown</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{best_result['max_drawdown']:.1f}%</div>
+                            <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Maximum Loss</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col4:
+                        st.markdown(f"""
+                        <div style="
+                            background: white;
+                            border-radius: 12px;
+                            padding: 20px;
+                            text-align: center;
+                            margin: 8px;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                            transition: all 0.3s ease;
+                            border: 1px solid #e2e8f0;
+                            border-left: 4px solid #3b82f6;
+                            min-height: 120px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                        ">
+                            <div style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 8px;">Win Rate</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #374151; margin: 4px 0;">{best_result['win_rate']:.1f}%</div>
+                            <div style="font-size: 12px; color: #6c757d; font-weight: 400;">Success Rate</div>
+                        </div>
+                        """, unsafe_allow_html=True)
                 
             
             if not analyzer.processed_data:
                 st.error("No valid data was processed for any of the selected tickers.")
                 return
             
+            # Show weight distribution and correlation matrix in one row (moved above Portfolio Overview)
+            
+            # Bar chart representation of optimal weights
+            if run_optimization and best_result:
+                weights_df = pd.DataFrame({
+                    'Indicator': ['Predicted Return', 'Confidence Interval', 'RSI', 'Bollinger Bands', 'SMA Cross'],
+                    'Weight': best_weights,
+                    'Percentage': [f"{w*100:.1f}%" for w in best_weights]
+                })
+                
+                # Create correlation matrix if requested
+                if show_correlation_matrix and len(analyzer.tickers) > 1:
+                    # Create correlation matrix
+                    price_data = {}
+                    for ticker in analyzer.tickers:
+                        if ticker in analyzer.processed_data:
+                            price_data[ticker] = analyzer.processed_data[ticker]['Close']
+                    
+                    if len(price_data) > 1:
+                        corr_df = pd.DataFrame(price_data).corr()
+                                 
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Weight Distribution Chart
+                            chart_html = create_chartjs_weight_distribution(weights_df)
+                            st.components.v1.html(chart_html, height=400)
+                        
+                        with col2:
+                            # Use HTML correlation matrix
+                            matrix_html = create_html_correlation_matrix(corr_df)
+                            st.components.v1.html(matrix_html, height=400)
+            
             # Display portfolio overview
-            st.markdown('<h2 class="section-header">📈 Portfolio Overview</h2>', unsafe_allow_html=True)
+            st.markdown('<h2 class="section-header">Portfolio Overview</h2>', unsafe_allow_html=True)
             
             # Calculate portfolio metrics
             portfolio_metrics = []
@@ -1486,84 +1720,12 @@ def main():
                     })
             
             if portfolio_metrics:
-                portfolio_df = pd.DataFrame(portfolio_metrics)
+                portfolio_overview_df = pd.DataFrame(portfolio_metrics)
                 
                 # Portfolio Overview Card with hover effects
             
-                st.dataframe(portfolio_df, use_container_width=True)
+                st.dataframe(portfolio_overview_df, use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
-
-                # Bar chart representation of optimal weights
-                if run_optimization and best_result:
-                    weights_df = pd.DataFrame({
-                        'Indicator': ['Predicted Return', 'Confidence Interval', 'RSI', 'Bollinger Bands', 'SMA Cross'],
-                        'Weight': best_weights,
-                        'Percentage': [f"{w*100:.1f}%" for w in best_weights]
-                    })
-                    
-                    fig_bar = px.bar(
-                        weights_df, 
-                        x='Indicator', 
-                        y='Weight',
-                        title="Optimal Weight Distribution",
-                        color_discrete_sequence=["#004c94"]  # Dark blue shade
-                    )
-                    fig_bar.update_layout(
-                        xaxis_title="Indicators",
-                        yaxis_title="Weight",
-                        showlegend=False,
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)'
-                    )
-                    fig_bar.update_traces(
-                        texttemplate='%{y:.2f}', 
-                        textposition='outside'
-                    )
-                    
-                    # Weight Distribution Chart Card with hover effects
-                    st.markdown('<h2 class="section-header">📊 Weight Distribution</h2>', unsafe_allow_html=True)
-                    
-                    st.plotly_chart(fig_bar, use_container_width=True)
-                
-                # Show correlation matrix if requested
-                
-                if show_correlation_matrix and len(analyzer.tickers) > 1:
-                    # Create correlation matrix
-                    price_data = {}
-                    for ticker in analyzer.tickers:
-                        if ticker in analyzer.processed_data:
-                            price_data[ticker] = analyzer.processed_data[ticker]['Close']
-                    
-                    if len(price_data) > 1:
-                        corr_df = pd.DataFrame(price_data).corr()
-                        
-                        fig_corr = go.Figure(data=go.Heatmap(
-                            z=corr_df.values,
-                            x=corr_df.columns,
-                            y=corr_df.columns,
-                            colorscale='RdBu',
-                            zmid=0,
-                            text=corr_df.round(2).values,
-                            texttemplate="%{text}",
-                            textfont={"size": 12},
-                            hoverongaps=False
-                        ))
-                        
-                        fig_corr.update_layout(
-                            title='Stock Price Correlation Matrix',
-                            height=450,
-                            margin=dict(l=20, r=20, t=40, b=20),
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            xaxis=dict(side="bottom"),
-                            yaxis=dict(autorange="reversed")
-                        )
-                    
-                        with st.container():
-                
-                            st.plotly_chart(fig_corr, use_container_width=True, config={'displayModeBar': False})
-                            
-                            st.markdown("</div>", unsafe_allow_html=True)
             
                 # Add buy/sell markers for all tickers
                 transactions_df = pd.DataFrame(strategy.transaction_log)
@@ -1593,20 +1755,15 @@ def main():
                             hovertemplate='<b>%{text}</b><br>Sell: $%{y:,.0f}<br>%{x}<extra></extra>'
                         ))
                 
-                fig_portfolio.update_layout(
-                    title="Multi-Ticker Portfolio Performance Over Time",
-                    xaxis_title="Date",
-                    yaxis_title="Portfolio Value ($)",
-                    height=500,
-                    hovermode='x unified',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)'
-                )
-                
                 # Portfolio Performance Chart Card with hover effects
-                st.markdown('<h2 class="section-header">📈 Portfolio Performance</h2>', unsafe_allow_html=True)
+                st.markdown('<h2 class="section-header">Portfolio Performance</h2>', unsafe_allow_html=True)
                 
-                st.plotly_chart(fig_portfolio, use_container_width=True)
+                if portfolio_df is not None and not portfolio_df.empty:
+                    # Use Chart.js
+                    chart_html = create_chartjs_portfolio_performance(portfolio_df)
+                    st.components.v1.html(chart_html, height=500)
+                else:
+                    st.info("No portfolio performance data available. Run the analysis to see portfolio performance.")
                 
                 
                 # Display transaction log
@@ -1637,7 +1794,7 @@ def main():
                     styled_df = df_transactions_display.style.applymap(color_transactions, subset=['type'])
                     
                     # Transaction Log Card with hover effects
-                    st.markdown('<h2 class="section-header">📋 Transaction Log</h2>', unsafe_allow_html=True)
+                    st.markdown('<h2 class="section-header">Transaction Log</h2>', unsafe_allow_html=True)
                     st.dataframe(styled_df, use_container_width=True)
                     
                 
@@ -1648,18 +1805,33 @@ def main():
                         'fee': 'sum'
                     }).rename(columns={'type': 'total_transactions'})
                     
-                    # Calculate profit/loss by ticker
+                    # Calculate profit/loss by ticker using actual profit data from transaction log
                     ticker_pl = {}
+                    ticker_pl_pct = {}
                     for ticker in df_transactions_calc['ticker'].unique():
                         ticker_trades = df_transactions_calc[df_transactions_calc['ticker'] == ticker]
-                        buys = ticker_trades[ticker_trades['type'] == 'BUY']['amount'].sum()
-                        sells = ticker_trades[ticker_trades['type'].str.startswith('SELL')]['amount'].sum()
-                        fees = ticker_trades['fee'].sum()
-                        pl = sells - buys - fees
-                        ticker_pl[ticker] = pl
+                        
+                        # Sum up actual profits from sell transactions using profit_pct data
+                        sell_trades = ticker_trades[ticker_trades['type'].str.startswith('SELL')]
+                        total_profit = 0
+                        total_buy_amount = 0
+                        
+                        for _, trade in sell_trades.iterrows():
+                            if 'profit_pct' in trade and pd.notna(trade['profit_pct']):
+                                # Find the corresponding buy trade for this ticker
+                                buy_trades = ticker_trades[ticker_trades['type'] == 'BUY']
+                                if not buy_trades.empty:
+                                    # Use the buy amount to calculate actual profit
+                                    buy_amount = buy_trades.iloc[0]['amount']  # Use first buy for this cycle
+                                    profit_amount = (trade['profit_pct'] / 100) * buy_amount
+                                    total_profit += profit_amount
+                                    total_buy_amount += buy_amount
+                        
+                        ticker_pl[ticker] = total_profit
+                        ticker_pl_pct[ticker] = (total_profit / total_buy_amount * 100) if total_buy_amount > 0 else 0
                     
                     ticker_summary['profit_loss'] = ticker_summary.index.map(ticker_pl)
-                    ticker_summary['profit_loss_pct'] = (ticker_summary['profit_loss'] / ticker_summary['amount']) * 100
+                    ticker_summary['profit_loss_pct'] = ticker_summary.index.map(ticker_pl_pct)
                     
                     # Format dollar columns for better readability
                     ticker_summary['amount'] = ticker_summary['amount'].apply(lambda x: f"${x:,.0f}")
@@ -1667,15 +1839,27 @@ def main():
                     ticker_summary['profit_loss'] = ticker_summary['profit_loss'].apply(lambda x: f"${x:,.0f}")
                     ticker_summary['profit_loss_pct'] = ticker_summary['profit_loss_pct'].apply(lambda x: f"{x:.1f}%")
                     
+                    # Add a summary row showing final portfolio value
+                    summary_row = pd.DataFrame({
+                        'total_transactions': [len(strategy.transaction_log)],
+                        'amount': [f"${final_value:,.0f}"],
+                        'fee': ["N/A"],
+                        'profit_loss': [f"${final_value - initial_value:,.0f}"],
+                        'profit_loss_pct': [f"{total_return:.1f}%"]
+                    }, index=['PORTFOLIO TOTAL'])
+                    
+                    # Combine ticker summary with portfolio total
+                    ticker_summary_with_total = pd.concat([ticker_summary, summary_row])
+                    
                     # Transaction Summary Card with hover effects
-                    st.markdown('<h2 class="section-header">📊 Transaction Summary by Ticker</h2>', unsafe_allow_html=True)
-                    st.dataframe(ticker_summary, use_container_width=True)
+                    st.markdown('<h2 class="section-header">Transaction Summary by Ticker</h2>', unsafe_allow_html=True)
+                    st.dataframe(ticker_summary_with_total, use_container_width=True)
                 else:
                     st.info("No transactions were executed with current parameters")
                 
                 # Show individual stock charts if requested
                 if show_individual_charts:
-                    st.markdown('<h2 class="section-header">📊 Individual Stock Analysis</h2>', unsafe_allow_html=True)
+                    st.markdown('<h2 class="section-header">Individual Stock Analysis</h2>', unsafe_allow_html=True)
                     
                     # Create tabs for each stock
                     if len(analyzer.tickers) > 1:
@@ -1706,8 +1890,7 @@ def display_individual_stock_chart(data, ticker, buy_threshold):
     buy_hold_return = ((last_price - first_price) / first_price) * 100
     current_score = data['Total_Score'].iloc[-1] if not data['Total_Score'].empty else 0
     
-    # Individual Stock Metrics Card with hover effects
-    st.markdown('<h3 class="section-header">📊 Key Metrics</h3>', unsafe_allow_html=True)
+
     
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -1753,9 +1936,207 @@ def display_individual_stock_chart(data, ticker, buy_threshold):
     )
     
     # Individual Stock Chart Card with hover effects
-    st.markdown('<h3 class="section-header">📈 Technical Analysis</h3>', unsafe_allow_html=True)
+    st.markdown('<h3 class="section-header">Technical Analysis</h3>', unsafe_allow_html=True)
     
     st.plotly_chart(fig, use_container_width=True)
+
+
+
+def create_chartjs_weight_distribution(weights_df):
+    """Create Chart.js weight distribution chart HTML"""
+    labels = weights_df['Indicator'].tolist()
+    data = weights_df['Weight'].tolist()
+    colors = ['#10b981', '#3b82f6', '#10b981', '#3b82f6', '#6366f1']
+    
+    chart_html = f"""
+    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
+        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Trading Signal Weighting Distribution</h3>
+        <div style="height: 300px; position: relative;">
+            <canvas id="weightChart"></canvas>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const weightCtx = document.getElementById('weightChart').getContext('2d');
+        new Chart(weightCtx, {{
+            type: 'bar',
+            data: {{
+                labels: {labels},
+                datasets: [{{
+                    label: 'Weight %',
+                    data: {data},
+                    backgroundColor: {colors},
+                    borderWidth: 0
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{
+                        display: false
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        max: 1,
+                        ticks: {{
+                            callback: function(value) {{
+                                return (value * 100).toFixed(1) + '%';
+                            }}
+                        }}
+                    }},
+                    x: {{
+                        grid: {{
+                            display: false
+                        }}
+                    }}
+                }}
+            }}
+        }});
+    </script>
+    """
+    return chart_html
+
+def create_chartjs_portfolio_performance(portfolio_df):
+    """Create Chart.js portfolio performance chart HTML"""
+    # Check if the required columns exist
+    if 'date' not in portfolio_df.columns or 'portfolio_value' not in portfolio_df.columns:
+        return """
+        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
+            <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Portfolio Performance</h3>
+            <div style="height: 400px; display: flex; align-items: center; justify-content: center;">
+                <p style="color: #6b7280;">No portfolio data available</p>
+            </div>
+        </div>
+        """
+    
+    # Convert date column to datetime if it's not already
+    if not pd.api.types.is_datetime64_any_dtype(portfolio_df['date']):
+        portfolio_df['date'] = pd.to_datetime(portfolio_df['date'])
+    
+    dates = portfolio_df['date'].dt.strftime('%Y-%m-%d').tolist()
+    values = portfolio_df['portfolio_value'].tolist()
+    
+    chart_html = f"""
+    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
+        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Portfolio Performance</h3>
+        <div style="height: 400px; position: relative;">
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(performanceCtx, {{
+            type: 'line',
+            data: {{
+                labels: {dates},
+                datasets: [{{
+                    label: 'Portfolio Value',
+                    data: {values},
+                    borderColor: '#374151',
+                    backgroundColor: 'rgba(55, 65, 81, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {{
+                    intersect: false,
+                    mode: 'index'
+                }},
+                plugins: {{
+                    legend: {{
+                        display: false
+                    }},
+                    tooltip: {{
+                        callbacks: {{
+                            label: function(context) {{
+                                return 'Portfolio Value: $' + context.parsed.y.toLocaleString();
+                            }}
+                        }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        ticks: {{
+                            callback: function(value) {{
+                                return '$' + (value / 1000).toFixed(0) + 'K';
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+        }});
+    </script>
+    """
+    return chart_html
+
+def create_html_correlation_matrix(corr_df):
+    """Create HTML correlation matrix heatmap"""
+    tickers = corr_df.columns.tolist()
+    
+    # Create header row
+    header_html = '<div class="correlation-cell bg-gray-100 font-bold"></div>'
+    for ticker in tickers:
+        header_html += f'<div class="correlation-cell bg-gray-100 font-bold text-xs">{ticker}</div>'
+    
+    # Create data rows
+    rows_html = ''
+    for i, ticker in enumerate(tickers):
+        row_html = f'<div class="correlation-cell bg-gray-100 font-bold text-xs">{ticker}</div>'
+        for j, corr_ticker in enumerate(tickers):
+            corr_value = corr_df.iloc[i, j]
+            
+            # Color coding based on correlation value
+            if corr_value == 1.0:
+                bg_color = '#059669'  # Green for perfect correlation
+            elif corr_value >= 0.8:
+                bg_color = '#10b981'  # Light green
+            elif corr_value >= 0.6:
+                bg_color = '#3b82f6'  # Blue
+            elif corr_value >= 0.4:
+                bg_color = '#6366f1'  # Indigo
+            elif corr_value >= 0.2:
+                bg_color = '#8b5cf6'  # Purple
+            else:
+                bg_color = '#a855f7'  # Dark purple
+            
+            row_html += f'<div class="correlation-cell text-white" style="background-color: {bg_color};">{corr_value:.2f}</div>'
+        rows_html += row_html
+    
+    matrix_html = f"""
+    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
+        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Stock Price Correlation Matrix</h3>
+        <div style="display: flex; justify-content: center;">
+            <div style="display: grid; grid-template-columns: repeat({len(tickers) + 1}, 1fr); gap: 0;">
+                {header_html}
+                {rows_html}
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .correlation-cell {{
+            width: 80px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e5e7eb;
+            font-size: 12px;
+            font-weight: 600;
+        }}
+    </style>
+    """
+    return matrix_html
 
 if __name__ == "__main__":
     main()
