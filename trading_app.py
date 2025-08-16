@@ -1853,13 +1853,13 @@ def main():
                     summary_row = pd.DataFrame({
                         'total_transactions': [len(strategy.transaction_log)],
                         'amount': [f"${final_value:,.0f}"],
-                        'fee': ["N/A"],
+                        'fee': [f"$"],
                         'profit_loss': [f"${final_value - initial_value:,.0f}"],
                         'profit_loss_pct': [f"{total_return:.1f}%"]
                     }, index=['PORTFOLIO TOTAL'])
                     
                     # Combine ticker summary with portfolio total
-                    ticker_summary_with_total = pd.concat([ticker_summary, summary_row])
+                    ticker_summary_with_total = pd.concat([ticker_summary])
                     
                     # Transaction Summary Card with hover effects
                     st.markdown('<h2 class="section-header">Transaction Summary by Ticker</h2>', unsafe_allow_html=True)
