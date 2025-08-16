@@ -1428,12 +1428,8 @@ def main():
                             """, unsafe_allow_html=True)
                    
             # Run final analysis with optimal/default weights
-            if run_optimization and best_result:
-                # Re-analyze with optimal weights
-                analyzer.analyze_stocks()
-            else:
-                # Use default weights
-                analyzer.analyze_stocks()
+            analyzer.analyze_stocks()
+                 # Run strategy backtest
         
             strategy = VectorbtTradingStrategy(
                 analyzer.processed_data,
@@ -1480,7 +1476,7 @@ def main():
                 ))
                 
                 # Core Performance Metrics Card with hover effects
-                st.markdown('<h2 class="section-header">Final Analysis Results (With Optimal Weights)</h2>', unsafe_allow_html=True)
+                st.markdown('<h2 class="section-header">Core Performance Metrics</h2>', unsafe_allow_html=True)
                 
                 col1, col2, col3, col4 = st.columns(4)
                 
@@ -1863,7 +1859,7 @@ def main():
                     }, index=['PORTFOLIO TOTAL'])
                     
                     # Combine ticker summary with portfolio total
-                    ticker_summary_with_total = pd.concat([ticker_summary])
+                    ticker_summary_with_total = pd.concat([ticker_summary, summary_row])
                     
                     # Transaction Summary Card with hover effects
                     st.markdown('<h2 class="section-header">Transaction Summary by Ticker</h2>', unsafe_allow_html=True)
