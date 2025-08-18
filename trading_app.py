@@ -1262,6 +1262,17 @@ class StrategyOptimizer:
 
 # Streamlit App
 def main():
+    st.markdown("""
+        <style>
+        /* Target the white dialog box inside the overlay */
+        div[data-testid="stDialog"] div[role="dialog"] {
+            width: 800px !important;   /* Set custom width */
+            max-width: 90% !important; /* Optional: responsive max width */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+
     if 'modal_shown' not in st.session_state:
         st.session_state.modal_shown = False
 
@@ -1275,9 +1286,8 @@ def main():
             st.session_state.modal_shown = True
             st.rerun()
 
-    # Show modal on first load - but mark it as shown immediately when opened
     if not st.session_state.modal_shown:
-        st.session_state.modal_shown = True  # Mark as shown when opening
+        st.session_state.modal_shown = True
         show_welcome_modal()
 
 
@@ -1938,11 +1948,21 @@ def display_individual_stock_chart(data, ticker, buy_threshold):
     fig.add_hline(y=buy_threshold, line_dash="dash", line_color="red", row=3, col=1, annotation_text="Buy Threshold")
     
     fig.update_layout(
-        height=800, 
+        height=800,
+        width=1400,  # Further increased width to accommodate legend
         title_text=f"Technical Analysis for {ticker}", 
         showlegend=True,
+        legend=dict(
+            orientation="h",  # Horizontal legend
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=0.98,
+            font=dict(size=10)  # Smaller font size for legend
+        ),
         plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(t=100, b=50, l=50, r=50)  # Add top margin for legend
     )
     
     # Individual Stock Chart Card with hover effects
