@@ -25,11 +25,11 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=SF+Pro+Display:wght@400;500;600;700&display=swap');
+
     
     /* Global Typography */
     html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+        font-family: sans-serif;
         color: #1f2937;
     }
     
@@ -437,6 +437,7 @@ st.markdown("""
         font-weight: 500;
         color: #374151;
         margin-bottom: 12px;
+        
     }
     
     /* Sidebar Cards */
@@ -1980,7 +1981,7 @@ def create_chartjs_weight_distribution(weights_df):
     
     chart_html = f"""
     <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
-        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Trading Signal Weighting Distribution</h3>
+        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Trading Signal Weighting Distribution</h3>
         <div style="height: 300px; position: relative;">
             <canvas id="weightChart"></canvas>
         </div>
@@ -2144,7 +2145,7 @@ def create_html_correlation_matrix(corr_df):
     
     matrix_html = f"""
     <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
-        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Stock Price Correlation Matrix</h3>
+        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Stock Price Correlation Matrix</h3>
         <div style="display: flex; justify-content: center;">
             <div style="display: grid; grid-template-columns: repeat({len(tickers) + 1}, 1fr); gap: 0;">
                 {header_html}
@@ -2170,5 +2171,4 @@ def create_html_correlation_matrix(corr_df):
 
 if __name__ == "__main__":
     main()
-
 
