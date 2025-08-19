@@ -1768,8 +1768,26 @@ def main():
                         chart_html = create_chartjs_weight_distribution(weights_df)
                         st.components.v1.html(chart_html, height=400)
                         
-                        # Correlation Matrix in separate row
-                        st.markdown('<h2 class="section-header">Stock Price Correlation Matrix</h2>', unsafe_allow_html=True)
+                        # Add some CSS to reduce spacing between components
+                        st.markdown("""
+                        <style>
+                        /* Target Streamlit HTML components more specifically */
+                        .stComponentsV1Html, 
+                        div[data-testid="stHorizontalBlock"] > div,
+                        .element-container {
+                            margin-bottom: 0 !important;
+                            padding-bottom: 0 !important;
+                        }
+                        
+                        /* Reduce spacing after the weight distribution chart */
+                        .stComponentsV1Html:first-of-type {
+                            margin-bottom: 8px !important;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
+                        # Correlation Matrix in separate row with reduced top margin
+                        st.markdown('<h2 class="section-header" style="margin-top: -32px;">Stock Price Correlation Matrix</h2>', unsafe_allow_html=True)
                         matrix_html, total_height = create_html_correlation_matrix(corr_df)
                         st.components.v1.html(matrix_html, height=total_height)
             
