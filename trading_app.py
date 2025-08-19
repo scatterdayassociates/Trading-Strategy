@@ -417,9 +417,9 @@ st.markdown("""
         font-size: 20px;
         font-weight: 600;
         color: #1f2937;
-        margin: 28px 0 16px 0;
+        margin: 40px 0 24px 0;
         border-bottom: 2px solid #0891b2;
-        padding-bottom: 8px;
+        padding-bottom: 12px;
         letter-spacing: -0.01em;
     }
     
@@ -436,7 +436,7 @@ st.markdown("""
         font-size: 16px;
         font-weight: 500;
         color: #374151;
-        margin: 0;
+        margin: 24px 0 16px 0;
         padding: 0;
     }
     
@@ -532,9 +532,38 @@ st.markdown("""
         font-size: 20px;
         font-weight: 600;
         color: #1f2937;
-        margin: 32px 0 20px 0;
+        margin: 40px 0 24px 0;
         padding-bottom: 12px;
         border-bottom: 1px solid #e5e7eb;
+    }
+    
+    /* H3 elements with section-header class */
+    h3.section-header {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 40px 0 24px 0;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    /* Inline H3 elements in chart components */
+    h3[style*="font-size: 18px"] {
+        margin: 40px 0 24px 0 !important;
+        padding-bottom: 12px !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+    
+    /* Main page title spacing */
+    h1[style*="font-size: 24px"] {
+        margin: 0 0 32px 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Ensure consistent spacing for all section headers */
+    .section-header, h2.section-header, h3.section-header {
+        margin: 40px 0 24px 0 !important;
+        padding-bottom: 12px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1991,8 +2020,7 @@ def display_individual_stock_chart(data, ticker, buy_threshold):
         margin=dict(t=100, b=50, l=50, r=50)  # Add top margin for legend
     )
     
-    # Individual Stock Chart Card with hover effects
-    st.markdown('<h3 class="section-header">Technical Analysis</h3>', unsafe_allow_html=True)
+    
     
     st.plotly_chart(fig, use_container_width=True)
 
@@ -2005,7 +2033,7 @@ def create_chartjs_weight_distribution(weights_df):
     colors = ['#10b981', '#3b82f6', '#10b981', '#3b82f6', '#6366f1']
     
     chart_html = f"""
-    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
+    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
         <div style="height: 300px; position: relative;">
             <canvas id="weightChart"></canvas>
         </div>
@@ -2060,7 +2088,7 @@ def create_chartjs_portfolio_performance(portfolio_df):
     # Check if the required columns exist
     if 'date' not in portfolio_df.columns or 'portfolio_value' not in portfolio_df.columns:
         return """
-        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
+        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
             <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Portfolio Performance</h3>
             <div style="height: 400px; display: flex; align-items: center; justify-content: center;">
                 <p style="color: #6b7280;">No portfolio data available</p>
@@ -2076,7 +2104,7 @@ def create_chartjs_portfolio_performance(portfolio_df):
     values = portfolio_df['portfolio_value'].tolist()
     
     chart_html = f"""
-    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
+    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
         <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Portfolio Performance</h3>
         <div style="height: 400px; position: relative;">
             <canvas id="performanceChart"></canvas>
@@ -2174,7 +2202,7 @@ def create_html_correlation_matrix(corr_df):
     total_height = header_height + matrix_height + 40  # Increased padding from 32 to 40
     
     matrix_html = f"""
-    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0; height: {total_height}px;">
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); height: {total_height}px;">
         <div style="display: flex; justify-content: center;">
             <div style="display: grid; grid-template-columns: repeat({len(tickers) + 1}, minmax(70px, 1fr)); gap: 0;">
                 {header_html}
