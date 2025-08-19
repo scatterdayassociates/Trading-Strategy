@@ -423,29 +423,29 @@ st.markdown("""
         letter-spacing: -0.01em;
     }
     
-    /* Enhanced Sidebar Styling */
+        /* Enhanced Sidebar Styling */
     .css-1d391kg {
         background: #f8fafc;
-        padding: 24px 20px;
+        padding: 0;
         border-right: 1px solid #e2e8f0;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
     }
     
-    /* Sidebar Section Headers */
+        /* Sidebar Section Headers */
     .sidebar-header {
         font-size: 16px;
         font-weight: 500;
         color: #374151;
-        margin-bottom: 12px;
-        
+        margin: 0;
+        padding: 0;
     }
     
-    /* Sidebar Cards */
+        /* Sidebar Cards */
     .sidebar-card {
         background: #ffffff;
         border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
+        padding: 0;
+        margin: 0;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         border: 1px solid #e5e7eb;
     }
@@ -498,7 +498,28 @@ st.markdown("""
     
     /* Spacing improvements */
     .element-container {
-        margin-bottom: 20px;
+        margin-bottom: 0;
+    }
+    
+    /* Remove spacing from sidebar elements */
+    .css-1d391kg .element-container {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .css-1d391kg .stMarkdown {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .css-1d391kg .stTextInput, 
+    .css-1d391kg .stTextArea,
+    .css-1d391kg .stSlider,
+    .css-1d391kg .stCheckbox,
+    .css-1d391kg .stDateInput,
+    .css-1d391kg .stButton {
+        margin: 0;
+        padding: 0;
     }
     
     /* Grid layout improvements */
@@ -1296,11 +1317,11 @@ def main():
     with st.sidebar:
         # Header with icon
         st.markdown("""
-        <div style="margin-bottom: 24px;">
-            <h1 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">
+        <div style="margin: 0; padding: 0;">
+            <h1 style="font-size: 24px; font-weight: 700; color: #1f2937; margin: 0; padding: 0;">
                 Trading Strategy Optimizer
             </h1>
-            <p style="font-size: 14px; color: #6b7280; margin: 0;">
+            <p style="font-size: 14px; color: #6b7280; margin: 0; padding: 0;">
                 Optimize and backtest algorithmic trading strategies with multiple stocks
             </p>
         </div>
@@ -1327,23 +1348,30 @@ def main():
         tickers = parse_tickers(ticker_input)
         if tickers:
             # Display tickers as styled tags
-            ticker_tags = " ".join([f'<span style="display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: 500; margin: 2px; border: 1px solid #93c5fd;">{ticker}</span>' for ticker in tickers])
+            ticker_tags = " ".join([f'<span style="display: inline-block; background: #dbeafe; color: #1e40af; padding: 2px 4px; border-radius: 4px; font-size: 12px; font-weight: 500; margin: 0; border: 1px solid #93c5fd;">{ticker}</span>' for ticker in tickers])
             st.markdown(f"""
-            <div style="margin: 8px 0;">
-                <p style="font-size: 12px; color: #1e40af; font-weight: 500; margin-bottom: 8px;">✓ Selected tickers:</p>
-                <div style="margin-bottom: 8px;">{ticker_tags}</div>
-                <p style="font-size: 12px; color: #6b7280;">Total: {len(tickers)} stocks</p>
+            <div style="margin: 0; padding: 0;">
+                <p style="font-size: 12px; color: #1e40af; font-weight: 500; margin: 0; padding: 0;">✓ Selected tickers:</p>
+                <div style="margin: 0; padding: 0;">{ticker_tags}</div>
+                <p style="font-size: 12px; color: #6b7280; margin: 0; padding: 0;">Total: {len(tickers)} stocks</p>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.error("Please enter at least one valid ticker symbol")
         
         # Strategy Parameters
+        # Strategy Parameters
         st.markdown('<h3 class="sidebar-header">Strategy Parameters</h3>', unsafe_allow_html=True)
-        
+
+    
+
+
+
+        # Sliders
         buy_threshold = st.slider("Buy Score Threshold", min_value=0.0, max_value=2.0, value=0.6, step=0.1)
         take_profit_pct = st.slider("Take Profit %", min_value=1, max_value=50, value=10, step=1)
         stop_loss_pct = st.slider("Stop Loss %", min_value=1, max_value=20, value=5, step=1)
+
         
         # Optimization Settings
         st.markdown('<h3 class="sidebar-header">Optimization Settings</h3>', unsafe_allow_html=True)
@@ -1358,7 +1386,6 @@ def main():
         show_correlation_matrix = st.checkbox("Show Correlation Matrix", value=True)
         
         # Run analysis button
-        st.markdown("<br>", unsafe_allow_html=True)
         run_analysis =st.button("Run Optimization", type="primary", use_container_width=True)
        
 
@@ -1707,17 +1734,15 @@ def main():
                     if len(price_data) > 1:
                         corr_df = pd.DataFrame(price_data).corr()
                                  
-                        col1, col2 = st.columns(2)
+                        # Weight Distribution Chart in separate row
+                        st.markdown('<h2 class="section-header">Weight Distribution Chart</h2>', unsafe_allow_html=True)
+                        chart_html = create_chartjs_weight_distribution(weights_df)
+                        st.components.v1.html(chart_html, height=400)
                         
-                        with col1:
-                            # Weight Distribution Chart
-                            chart_html = create_chartjs_weight_distribution(weights_df)
-                            st.components.v1.html(chart_html, height=400)
-                        
-                        with col2:
-                            # Use HTML correlation matrix
-                            matrix_html = create_html_correlation_matrix(corr_df)
-                            st.components.v1.html(matrix_html, height=400)
+                        # Correlation Matrix in separate row
+                        st.markdown('<h2 class="section-header">Stock Price Correlation Matrix</h2>', unsafe_allow_html=True)
+                        matrix_html, total_height = create_html_correlation_matrix(corr_df)
+                        st.components.v1.html(matrix_html, height=total_height)
             
             # Display portfolio overview
             st.markdown('<h2 class="section-header">Portfolio Overview</h2>', unsafe_allow_html=True)
@@ -1981,7 +2006,6 @@ def create_chartjs_weight_distribution(weights_df):
     
     chart_html = f"""
     <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
-        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Trading Signal Weighting Distribution</h3>
         <div style="height: 300px; position: relative;">
             <canvas id="weightChart"></canvas>
         </div>
@@ -2037,7 +2061,7 @@ def create_chartjs_portfolio_performance(portfolio_df):
     if 'date' not in portfolio_df.columns or 'portfolio_value' not in portfolio_df.columns:
         return """
         <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
-            <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Portfolio Performance</h3>
+            <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Portfolio Performance</h3>
             <div style="height: 400px; display: flex; align-items: center; justify-content: center;">
                 <p style="color: #6b7280;">No portfolio data available</p>
             </div>
@@ -2053,7 +2077,7 @@ def create_chartjs_portfolio_performance(portfolio_df):
     
     chart_html = f"""
     <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
-        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Portfolio Performance</h3>
+        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Portfolio Performance</h3>
         <div style="height: 400px; position: relative;">
             <canvas id="performanceChart"></canvas>
         </div>
@@ -2143,11 +2167,16 @@ def create_html_correlation_matrix(corr_df):
             row_html += f'<div class="correlation-cell text-white" style="background-color: {bg_color};">{corr_value:.2f}</div>'
         rows_html += row_html
     
+    # Calculate dynamic height based on number of tickers
+    cell_height = 60  # Increased from 40 to 60
+    header_height = 60  # Increased from 50 to 60
+    matrix_height = (len(tickers) + 1) * cell_height  # +1 for header row
+    total_height = header_height + matrix_height + 40  # Increased padding from 32 to 40
+    
     matrix_html = f"""
-    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0;">
-        <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; font-family: sans-serif;">Stock Price Correlation Matrix</h3>
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin: 20px 0; height: {total_height}px;">
         <div style="display: flex; justify-content: center;">
-            <div style="display: grid; grid-template-columns: repeat({len(tickers) + 1}, 1fr); gap: 0;">
+            <div style="display: grid; grid-template-columns: repeat({len(tickers) + 1}, minmax(70px, 1fr)); gap: 0;">
                 {header_html}
                 {rows_html}
             </div>
@@ -2156,18 +2185,22 @@ def create_html_correlation_matrix(corr_df):
     
     <style>
         .correlation-cell {{
-            width: 80px;
-            height: 60px;
+            min-width: 70px;
+            max-width: 90px;
+            height: {cell_height}px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 1px solid #e5e7eb;
             font-size: 12px;
             font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }}
     </style>
     """
-    return matrix_html
+    return matrix_html, total_height
 
 if __name__ == "__main__":
     main()
