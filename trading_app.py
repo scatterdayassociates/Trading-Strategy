@@ -2222,6 +2222,7 @@ def create_html_correlation_matrix(corr_df):
             border: 1px solid #e5e7eb;
             font-size: 12px;
             font-weight: 600;
+            font-family: sans-serif;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
