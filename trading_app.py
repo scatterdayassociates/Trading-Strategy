@@ -2139,8 +2139,8 @@ def create_chartjs_portfolio_performance(portfolio_df):
                 datasets: [{{
                     label: 'Portfolio Value',
                     data: {values},
-                    borderColor: '#374151',
-                    backgroundColor: 'rgba(55, 65, 81, 0.1)',
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     fill: true,
                     tension: 0.4,
                     pointRadius: 0
@@ -2220,11 +2220,39 @@ def create_html_correlation_matrix(corr_df):
     total_height = header_height + matrix_height + 40  # Increased padding from 32 to 40
     
     matrix_html = f"""
-    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); height: {total_height}px;">
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); height: {total_height + 60}px;">
         <div style="display: flex; justify-content: center;">
             <div style="display: grid; grid-template-columns: repeat({len(tickers) + 1}, minmax(70px, 1fr)); gap: 0;">
                 {header_html}
                 {rows_html}
+            </div>
+        </div>
+        
+        <!-- Correlation Legend -->
+        <div style="margin-top: 20px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background-color: #059669; border-radius: 4px;"></div>
+                <span style="font-size: 12px; font-family: sans-serif; color: #374151;">Perfect (1.0)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background-color: #10b981; border-radius: 4px;"></div>
+                <span style="font-size: 12px; font-family: sans-serif; color: #374151;">Very High (≥0.8)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background-color: #3b82f6; border-radius: 4px;"></div>
+                <span style="font-size: 12px; font-family: sans-serif; color: #374151;">High (≥0.6)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background-color: #6366f1; border-radius: 4px;"></div>
+                <span style="font-size: 12px; font-family: sans-serif; color: #374151;">Moderate (≥0.4)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background-color: #8b5cf6; border-radius: 4px;"></div>
+                <span style="font-size: 12px; font-family: sans-serif; color: #374151;">Low (≥0.2)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background-color: #a855f7; border-radius: 4px;"></div>
+                <span style="font-size: 12px; font-family: sans-serif; color: #374151;">Very Low (&lt;0.2)</span>
             </div>
         </div>
     </div>
